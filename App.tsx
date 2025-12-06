@@ -578,57 +578,56 @@ const App: React.FC = () => {
       {/* Top Navigation */}
       <nav className={navClasses}>
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => setState(s => ({ ...s, sidebarOpen: !s.sidebarOpen }))}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg text-gray-500"
+          >
+            {state.sidebarOpen ? <Icons.Menu size={20} /> : <Icons.ChevronRight size={20} />}
+          </button>
           <div className="flex items-center gap-2">
-            <Button
-              variant={state.view === ViewMode.STATS ? 'primary' : 'ghost'}
-              size="sm"
-              onClick={() => setState(s => ({ ...s, view: s.view === ViewMode.STATS ? ViewMode.EDITOR : ViewMode.STATS }))}
-              className={state.focusMode ? 'hidden' : ''}
-            >
-              <Icons.BarChart2 size={18} className="mr-2" />
-              Stats
-            </Button>
-
-            <button
-              onClick={() => setState(s => ({ ...s, focusMode: !s.focusMode }))}
-              className={`p-2 rounded-lg transition-colors ${state.focusMode ? 'bg-gold-500 text-white shadow-lg shadow-gold-500/50' : 'hover:bg-gray-100 dark:hover:bg-white/5 text-gray-500'}`}
-              title="Focus Mode"
-            >
-              <Icons.Focus size={20} />
-            </button>
-
-            <button
-              onClick={() => setState(s => ({ ...s, sidebarOpen: !s.sidebarOpen }))}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg text-gray-500"
-            >
-              {state.sidebarOpen ? <Icons.Menu size={20} /> : <Icons.ChevronRight size={20} />}
-            </button>
-            <div className="flex items-center gap-2">
-              <span className="font-serif font-bold text-lg text-gold-600 dark:text-gold-500">Better Writer</span>
-              {!state.focusMode && (
-                <>
-                  <span className="w-px h-4 bg-gray-300 dark:bg-gray-700 mx-2"></span>
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-300 hidden md:inline">{activeBook?.title}</span>
-                </>
-              )}
-            </div>
+            <span className="font-serif font-bold text-lg text-gold-600 dark:text-gold-500">Better Writer</span>
+            {!state.focusMode && (
+              <>
+                <span className="w-px h-4 bg-gray-300 dark:bg-gray-700 mx-2"></span>
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-300 hidden md:inline">{activeBook?.title}</span>
+              </>
+            )}
           </div>
+        </div>
 
-          {/* Center Actions (Only in Editor View) */}
-          {state.view === ViewMode.EDITOR && !state.focusMode && (
-            <div className="hidden md:flex items-center gap-2 animate-in fade-in slide-in-from-top-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowExport(true)}
-              >
-                <Icons.Download size={16} className="mr-2" />
-                Export Project
-              </Button>
-            </div>
-          )}
+        {/* Center Actions (Only in Editor View) */}
+        {state.view === ViewMode.EDITOR && !state.focusMode && (
+          <div className="hidden md:flex items-center gap-2 animate-in fade-in slide-in-from-top-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowExport(true)}
+            >
+              <Icons.Download size={16} className="mr-2" />
+              Export Project
+            </Button>
+          </div>
+        )}
 
+        <div className="flex items-center gap-2">
 
+          <Button
+            variant={state.view === ViewMode.STATS ? 'primary' : 'ghost'}
+            size="sm"
+            onClick={() => setState(s => ({ ...s, view: s.view === ViewMode.STATS ? ViewMode.EDITOR : ViewMode.STATS }))}
+            className={state.focusMode ? 'hidden' : ''}
+          >
+            <Icons.BarChart2 size={18} className="mr-2" />
+            Stats
+          </Button>
+
+          <button
+            onClick={() => setState(s => ({ ...s, focusMode: !s.focusMode }))}
+            className={`p-2 rounded-lg transition-colors ${state.focusMode ? 'bg-gold-500 text-white shadow-lg shadow-gold-500/50' : 'hover:bg-gray-100 dark:hover:bg-white/5 text-gray-500'}`}
+            title="Focus Mode"
+          >
+            <Icons.Focus size={20} />
+          </button>
 
           <button
             onClick={() => setState(s => ({ ...s, darkMode: !s.darkMode }))}
@@ -646,18 +645,77 @@ const App: React.FC = () => {
             <Icons.LogOut size={20} />
           </button>
         </div>
-      </nav >
+      </nav>
+
+      {/* Main Layout */}
+      <div className="flex-1 flex pt-16 relative">
+        <Sidebar
+          isOpen={state.sidebarOpen && !state.focusMode}
+          books={state.books}
+          fileMap={state.fileMap}
+          activeBookId={state.activeBookId}
+          activeFileId={state.activeFileId}
+          rootFolderId={activeBook?.rootFolderId || ''}
+          onCreateNode={createNode}
+          onDeleteNode={deleteNode}
+          onSelectFile={(id) => setState(s => ({ ...s, activeFileId: id }))}
+          onToggleFolder={toggleFolder}
+          onRenameNode={renameNode}
+          onReorganize={handleReorganize}
+          onImportFiles={handleImport}
+          onCreateBook={createBook}
+          onSwitchBook={switchBook}
+          onDeleteBook={deleteBook}
+          onRenameBook={renameBook}
+        />
+
+        {/* Content Area */}
+        <main
+          className={`flex-1 flex flex-col relative min-w-0 bg-white dark:bg-neutral-800 transition-colors duration-300
+            ${state.focusMode ? 'items-center justify-center' : ''}
+          `}
+          onClick={() => {
+            if (state.sidebarOpen && window.innerWidth < 768) {
+              setState(s => ({ ...s, sidebarOpen: false }));
+            }
+          }}
+        >
+          {state.view === ViewMode.EDITOR ? (
+            activeFile ? (
+              <Editor
+                ref={editorRef}
+                content={activeFile.content || ''}
+                onChange={(val) => updateFileContent(activeFile.id, val)}
+                title={activeFile.title}
+                onTitleChange={(val) => updateFileTitle(activeFile.id, val)}
+                focusMode={state.focusMode}
+                active={userActivity}
+              />
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500">
+                <div className="text-center">
+                  <Icons.FileText size={48} className="mx-auto mb-4 opacity-50" />
+                  <p className="text-lg">Select a file to start writing</p>
+                </div>
+              </div>
+            )
+          ) : state.view === ViewMode.STATS ? (
+            <StatsPage
+              books={state.books}
+              fileMap={state.fileMap}
+            />
+          ) : null}
+        </main>
+      </div>
 
       {/* Export Modal */}
-      {
-        showExport && (
-          <ExportDialog
-            onExport={handleExport}
-            onClose={() => setShowExport(false)}
-            bookTitle={activeBook?.title || 'Untitled'}
-          />
-        )
-      }
+      {showExport && (
+        <ExportDialog
+          onExport={handleExport}
+          onClose={() => setShowExport(false)}
+          bookTitle={activeBook?.title || 'Untitled'}
+        />
+      )}
 
     </div >
   );
