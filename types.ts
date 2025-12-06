@@ -34,6 +34,7 @@ export interface FileNode {
   wordCount?: number;
   lastModified: number;
   isOpen?: boolean; // For folders
+  fileHandle?: FileSystemFileHandle; // Handle for File System Access API
 }
 
 export interface Book {
