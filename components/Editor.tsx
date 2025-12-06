@@ -15,13 +15,13 @@ interface EditorProps {
   active: boolean; // Is user currently typing/active
 }
 
-export const Editor = forwardRef<EditorHandle, EditorProps>(({ 
-  content, 
-  onChange, 
-  title, 
-  onTitleChange, 
-  focusMode, 
-  active 
+export const Editor = forwardRef<EditorHandle, EditorProps>(({
+  content,
+  onChange,
+  title,
+  onTitleChange,
+  focusMode,
+  active
 }, ref) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
@@ -37,10 +37,10 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(({
       };
     },
     setSelection: (start, end) => {
-       if (textareaRef.current) {
-         textareaRef.current.setSelectionRange(start, end);
-         textareaRef.current.focus();
-       }
+      if (textareaRef.current) {
+        textareaRef.current.setSelectionRange(start, end);
+        textareaRef.current.focus();
+      }
     },
     getTextarea: () => textareaRef.current
   }));
@@ -66,7 +66,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(({
 
   return (
     <div className={`flex flex-col mx-auto px-4 md:px-12 py-8 min-h-[calc(100vh-4rem)] transition-all duration-700 ease-in-out
-      ${focusMode ? 'max-w-4xl mt-12' : 'max-w-3xl'}
+      ${focusMode ? 'max-w-4xl mt-12' : 'max-w-5xl'}
     `}>
       {/* Title Input - Textarea for wrapping */}
       <textarea
@@ -85,7 +85,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(({
           }
         }}
       />
-      
+
       {/* Main Content Area */}
       <div className="relative flex-1 w-full min-h-[60vh]">
         <textarea
@@ -96,11 +96,11 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(({
             ${focusMode ? 'placeholder-gray-200/20' : 'placeholder-gray-300 dark:placeholder-gray-800'}
           `}
           style={{
-             fontFamily: 'Merriweather, serif',
-             fontSize: '1.25rem', // text-xl
-             lineHeight: '1.75em', // leading-loose
-             whiteSpace: 'pre-wrap',
-             overflowWrap: 'break-word',
+            fontFamily: 'Merriweather, serif',
+            fontSize: '1.25rem', // text-xl
+            lineHeight: '1.75em', // leading-loose
+            whiteSpace: 'pre-wrap',
+            overflowWrap: 'break-word',
           }}
           placeholder="Start writing..."
           spellCheck={false}

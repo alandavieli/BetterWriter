@@ -68,6 +68,7 @@ export interface ExportConfig {
   format: 'PDF' | 'EPUB' | 'DOCX';
   template: 'Standard' | 'Manuscript' | 'Modern';
   includeCover: boolean;
+  scope: 'current' | 'project';
 }
 
 export interface DashboardStats {

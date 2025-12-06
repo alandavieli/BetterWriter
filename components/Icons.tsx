@@ -37,7 +37,8 @@ import {
   PlayCircle,
 
   Cloud,
-  Star
+  Star,
+  Heart
 } from 'lucide-react';
 
 export const Icons = {
@@ -79,5 +80,6 @@ export const Icons = {
 
   PlayCircle,
   Cloud,
-  Star
+  Star,
+  Heart
 };

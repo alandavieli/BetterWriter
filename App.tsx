@@ -449,34 +449,46 @@ const App: React.FC = () => {
       return;
     }
 
-    // Recursive function to get all text content in order
-    const getAllContent = (nodeId: string): string => {
-      const node = state.fileMap[nodeId];
-      if (!node) return "";
+    let fullContent = "";
+    let title = activeBook.title;
 
-      let content = "";
-
-      if (node.type === NodeType.FILE && node.content) {
-        content += `<h1>${node.title}</h1>\n${node.content}\n\n`;
+    if (config.scope === 'current') {
+      if (!activeFile) {
+        alert("No active file to export.");
+        return;
       }
-
-      if (node.children) {
-        node.children.forEach(childId => {
-          content += getAllContent(childId);
-        });
+      title = activeFile.title;
+      if (activeFile.content) {
+        fullContent = `<h1>${activeFile.title}</h1>\n${activeFile.content}\n\n`;
       }
+    } else {
+      // Recursive function to get all text content in order
+      const getAllContent = (nodeId: string): string => {
+        const node = state.fileMap[nodeId];
+        if (!node) return "";
 
-      return content;
-    };
+        let content = "";
 
-    const fullContent = getAllContent(activeBook.rootFolderId);
+        if (node.type === NodeType.FILE && node.content) {
+          content += `<h1>${node.title}</h1>\n${node.content}\n\n`;
+        }
+
+        if (node.children) {
+          node.children.forEach(childId => {
+            content += getAllContent(childId);
+          });
+        }
+
+        return content;
+      };
+
+      fullContent = getAllContent(activeBook.rootFolderId);
+    }
 
     if (!fullContent.trim()) {
       alert("No content to export.");
       return;
     }
-
-    const title = activeBook.title;
 
     // PDF Export
     if (config.format === 'PDF') {
@@ -614,7 +626,14 @@ const App: React.FC = () => {
           <Button
             variant={state.view === ViewMode.STATS ? 'primary' : 'ghost'}
             size="sm"
-            onClick={() => setState(s => ({ ...s, view: s.view === ViewMode.STATS ? ViewMode.EDITOR : ViewMode.STATS }))}
+            onClick={() => setState(s => {
+              const newView = s.view === ViewMode.STATS ? ViewMode.EDITOR : ViewMode.STATS;
+              return {
+                ...s,
+                view: newView,
+                sidebarOpen: newView === ViewMode.STATS ? false : true // Auto-hide sidebar in stats, show in editor
+              };
+            })}
             className={state.focusMode ? 'hidden' : ''}
           >
             <Icons.BarChart2 size={18} className="mr-2" />
@@ -648,7 +667,7 @@ const App: React.FC = () => {
       </nav>
 
       {/* Main Layout */}
-      <div className="flex-1 flex pt-16 relative">
+      <div className={`flex-1 flex pt-16 relative transition-all duration-300 ${state.sidebarOpen && !state.focusMode ? 'md:pl-72' : ''}`}>
         <Sidebar
           isOpen={state.sidebarOpen && !state.focusMode}
           books={state.books}
@@ -671,7 +690,7 @@ const App: React.FC = () => {
 
         {/* Content Area */}
         <main
-          className={`flex-1 flex flex-col relative min-w-0 bg-white dark:bg-neutral-800 transition-colors duration-300
+          className={`flex-1 flex flex-col relative min-w-0 bg-white dark:bg-neutral-800 transition-colors duration-300 overflow-y-auto
             ${state.focusMode ? 'items-center justify-center' : ''}
           `}
           onClick={() => {

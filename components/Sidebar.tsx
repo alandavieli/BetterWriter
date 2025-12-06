@@ -235,7 +235,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Files</span>
         </div>
-        <div className="grid grid-cols-4 gap-1 p-1 bg-white/50 dark:bg-white/5 rounded-lg border border-gold-100 dark:border-white/5">
+        <div className="grid grid-cols-3 gap-1 p-1 bg-white/50 dark:bg-white/5 rounded-lg border border-gold-100 dark:border-white/5">
           <button type="button" onClick={() => onCreateNode(NodeType.FILE, rootFolderId)} className="p-1.5 flex justify-center hover:bg-gold-200 dark:hover:bg-white/10 rounded text-gray-500" title="New File">
             <Icons.Plus size={16} />
           </button>
