@@ -3,7 +3,9 @@ import { Icons } from './components/Icons';
 import { Button } from './components/Button';
 import { LandingPage } from './components/LandingPage';
 import { Editor, EditorHandle } from './components/Editor';
-import { AppState, FileNode, NodeType, FileCategory, ViewMode } from './types';
+import { Sidebar } from './components/Sidebar';
+import { ExportDialog } from './components/ExportDialog';
+import { AppState, FileNode, NodeType, FileCategory, ViewMode, Book, ExportConfig } from './types';
 
 // Utility for ID generation
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -17,19 +19,20 @@ const defaultState: AppState = {
   activeFileId: null,
   darkMode: false,
   focusMode: false,
-  sidebarOpen: false, // Default closed as we are moving to file-based
+  sidebarOpen: true,
   assistantOpen: false,
   assistantHistory: []
 };
 
-// Start with a clean slate for the file-based approach, but preserver theme
+
 const getInitialState = (): AppState => {
   const savedState = localStorage.getItem('better-writer-state');
   let initialState = savedState ? JSON.parse(savedState) : defaultState;
 
-  // Reset critical validation states
-  initialState.view = ViewMode.LANDING;
-  initialState.activeFileId = null;
+  // Ensure sidebar is open by default if we are in editor info
+  if (initialState.view === ViewMode.EDITOR) {
+    initialState.sidebarOpen = true;
+  }
 
   // Auto-detect system theme preference if not saved
   if (!savedState) {
@@ -42,59 +45,62 @@ const getInitialState = (): AppState => {
 };
 
 const App: React.FC = () => {
-  // --- Mobile Blocker State ---
+  // --- Mobile Blocker ---
   const [isMobile, setIsMobile] = useState(false);
 
   // --- Main State ---
   const [state, setState] = useState<AppState>(getInitialState);
   const [userActivity, setUserActivity] = useState(true);
   const [permissionMessage, setPermissionMessage] = useState<string | null>(null);
-  const [lastSaved, setLastSaved] = useState<number>(Date.now());
+  const [lastSaved, setLastSaved] = useState<number>(0);
+  const [showExport, setShowExport] = useState(false);
 
-  // Timer for focus mode activity detection
   const activityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorRef = useRef<EditorHandle>(null);
   const autoSaveIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // --- Mobile Checker Effect ---
+  // --- Mobile Check ---
   useEffect(() => {
     const checkMobile = () => {
       const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
       const isMobileDevice = /android|ipad|iphone|ipod/i.test(userAgent.toLowerCase()) || window.innerWidth < 768;
       setIsMobile(isMobileDevice);
     };
-
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // --- Theme Management ---
+  // --- Persistence ---
   useEffect(() => {
-    if (state.darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    localStorage.setItem('better-writer-state', JSON.stringify(state));
+    if (state.darkMode) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+
+    // We don't persist file handles in localStorage as they are not serializable
+    // We only persist the basic structure/content.
+    const stateToSave = {
+      ...state,
+      fileMap: Object.fromEntries(
+        Object.entries(state.fileMap).map(([k, v]) => {
+          const { fileHandle, ...rest } = v;
+          return [k, rest];
+        })
+      )
+    };
+    localStorage.setItem('better-writer-state', JSON.stringify(stateToSave));
   }, [state]);
 
-  // --- Focus Mode Mouse Tracking ---
+  // --- Focus Mode Logic ---
   useEffect(() => {
     if (!state.focusMode) return;
-
     const handleActivity = () => {
       setUserActivity(true);
       if (activityTimeoutRef.current) clearTimeout(activityTimeoutRef.current);
-      activityTimeoutRef.current = setTimeout(() => {
-        setUserActivity(false);
-      }, 1500);
+      activityTimeoutRef.current = setTimeout(() => setUserActivity(false), 1500);
     };
-
     window.addEventListener('mousemove', handleActivity);
     window.addEventListener('keydown', handleActivity);
     window.addEventListener('click', handleActivity);
-
     return () => {
       window.removeEventListener('mousemove', handleActivity);
       window.removeEventListener('keydown', handleActivity);
@@ -104,36 +110,16 @@ const App: React.FC = () => {
   }, [state.focusMode]);
 
 
-  // --- File System Access API & Saving Logic ---
-
-  /**
-   * Explainer: The File System Access API allows web apps to read/write directly to files on the user's device.
-   * 1. Window.showslOpenFilePicker() -> Prompts user to pick a file -> Returns a FileSystemFileHandle.
-   * 2. Window.showSaveFilePicker() -> Prompts user to pick separate location -> Returns a FileSystemFileHandle.
-   * 3. handle.createWritable() -> Creates a writable stream to save content.
-   * 
-   * Security: The browser requires user gesture (click) for the first access. 
-   * Subsequent writes may need permission verification `handle.requestPermission()`.
-   */
+  // --- File System Logic ---
 
   const verifyPermission = async (fileHandle: FileSystemFileHandle, readWrite: boolean) => {
-    const options: FileSystemHandlePermissionDescriptor = {
-      mode: readWrite ? 'readwrite' : 'read'
-    };
-
-    // Check if permission was already granted.
-    if ((await fileHandle.queryPermission(options)) === 'granted') {
-      return true;
-    }
-
-    // Show helper message to user before the scary browser prompt
-    setPermissionMessage("Please click 'Allow' to let BetterWriter save your changes accurately.");
-
-    // Request permission. If the developer doesn't handle the error, the browser may show a prompt.
+    const options: FileSystemHandlePermissionDescriptor = { mode: readWrite ? 'readwrite' : 'read' };
+    // @ts-ignore
+    if ((await fileHandle.queryPermission(options)) === 'granted') return true;
+    setPermissionMessage("Please click 'Allow' to authorize saving.");
+    // @ts-ignore
     const result = await fileHandle.requestPermission(options);
-
-    setPermissionMessage(null); // Hide message after interaction
-
+    setPermissionMessage(null);
     return result === 'granted';
   };
 
@@ -145,21 +131,16 @@ const App: React.FC = () => {
     try {
       let handle = fileNode.fileHandle;
 
-      // If no handle (New File), we must prompt user to save to disk first
       if (!handle) {
         if (manual) {
-          // For manual save on a new file, show Save Picker
-          // @ts-ignore - Typescript might not have full File System Access API types by default
+          // @ts-ignore
           handle = await window.showSaveFilePicker({
-            types: [{
-              description: 'Text Files',
-              accept: { 'text/plain': ['.txt'] },
-            }],
+            types: [{ description: 'Text Files', accept: { 'text/plain': ['.txt'] } }],
           });
+          if (!handle) return;
 
-          if (!handle) return; // User cancelled
-
-          // Update state with new handle
+          // Update state with new handle explicitly
+          const newTitle = handle.name.replace('.txt', '');
           setState(prev => ({
             ...prev,
             fileMap: {
@@ -167,176 +148,310 @@ const App: React.FC = () => {
               [fileNode.id]: {
                 ...prev.fileMap[fileNode.id],
                 fileHandle: handle,
-                title: handle.name.replace('.txt', '')
+                title: newTitle
               }
             }
           }));
+          // Continue to save with this new handle
         } else {
-          // If auto-save and no handle, we simply cannot save yet. 
-          // We don't want to prompt user unexpectedly during auto-save.
-          console.log("Skipping auto-save for unsaved new file");
-          return;
+          return; // Cannot auto-save
         }
       }
 
       if (!handle) return;
 
-      // Have handle, verify permission and write
-      const hasPermission = await verifyPermission(handle, true);
-      if (!hasPermission) return;
-
-      const writable = await handle.createWritable();
-      await writable.write(fileNode.content || '');
-      await writable.close();
-
-      setLastSaved(Date.now());
-      if (manual) {
-        // Maybe show a small toast?
-        // alert("Saved!"); // Too intrusive, prefer subtle UI indication
-      }
-
-    } catch (err) {
-      console.error("Error saving file:", err);
-      // Could handle "User cancelled" error specially
-    }
-  };
-
-  // --- Auto-Save Effect ---
-  // Using a Ref for the current state to access in the interval without re-binding.
-  const stateRef = useRef(state);
-  useEffect(() => { stateRef.current = state; }, [state]);
-
-  const saveFileFromRef = async () => {
-    const currentState = stateRef.current;
-    if (!currentState.activeFileId) return;
-    const fileNode = currentState.fileMap[currentState.activeFileId];
-    if (!fileNode || !fileNode.fileHandle) return; // Only auto-save if we have a handle
-
-    try {
-      const handle = fileNode.fileHandle;
-      // We assume permission is persistent for the session usually
-
-      // @ts-ignore
-      const options = { mode: 'readwrite' };
-      // @ts-ignore
-      if ((await handle.queryPermission(options)) === 'granted') {
+      if (await verifyPermission(handle, true)) {
         // @ts-ignore
         const writable = await handle.createWritable();
         await writable.write(fileNode.content || '');
         await writable.close();
         setLastSaved(Date.now());
-        console.log("Auto-saved successfully");
+        console.log("Saved!");
       }
-    } catch (e) {
-      console.error("Auto-save failed", e);
+
+    } catch (err) {
+      console.error("Save failed:", err);
     }
   };
 
+  // Auto-save
+  const stateRef = useRef(state);
+  useEffect(() => { stateRef.current = state; }, [state]);
+
   useEffect(() => {
-    autoSaveIntervalRef.current = setInterval(saveFileFromRef, 5 * 60 * 1000);
-    return () => {
-      if (autoSaveIntervalRef.current) clearInterval(autoSaveIntervalRef.current);
-    }
-  }, []); // Empty dependency, uses Ref
+    autoSaveIntervalRef.current = setInterval(async () => {
+      const s = stateRef.current;
+      if (s.activeFileId && s.fileMap[s.activeFileId]?.fileHandle) {
+        const node = s.fileMap[s.activeFileId];
+        try {
+          // @ts-ignore
+          const opts = { mode: 'readwrite' };
+          // @ts-ignore
+          if (await node.fileHandle.queryPermission(opts) === 'granted') {
+            // @ts-ignore
+            const writable = await node.fileHandle.createWritable();
+            await writable.write(node.content || '');
+            await writable.close();
+            setLastSaved(Date.now());
+          }
+        } catch (e) {
+          console.error("Autosave error", e);
+        }
+      }
+    }, 5 * 60 * 1000); // 5 min
+    return () => { if (autoSaveIntervalRef.current) clearInterval(autoSaveIntervalRef.current); };
+  }, []);
 
 
   // --- Actions ---
 
-  const handleStart = () => {
-    setState(prev => ({ ...prev, view: ViewMode.EDITOR }));
+  const handleStart = () => setState(prev => ({ ...prev, view: ViewMode.EDITOR, sidebarOpen: true }));
+
+  // Helper to ensure we have a valid book/root to attach files to
+  const ensureActiveContext = (prevState: AppState): { bookId: string, rootId: string, newState: AppState } => {
+    let newState = { ...prevState };
+    let bookId = newState.activeBookId;
+    let rootId = bookId ? newState.books.find(b => b.id === bookId)?.rootFolderId : null;
+
+    if (!bookId || !rootId) {
+      // Create default workspace
+      bookId = generateId();
+      rootId = generateId();
+      const newBook: Book = {
+        id: bookId,
+        title: 'My Workspace',
+        rootFolderId: rootId,
+        status: 'Drafting'
+      };
+      const newRoot: FileNode = {
+        id: rootId,
+        parentId: null,
+        title: 'Root',
+        type: NodeType.FOLDER,
+        children: [],
+        lastModified: Date.now(),
+        isOpen: true
+      };
+      newState.books = [...newState.books, newBook];
+      newState.fileMap = { ...newState.fileMap, [rootId]: newRoot };
+      newState.activeBookId = bookId;
+    }
+    // @ts-ignore
+    return { bookId, rootId, newState };
   };
 
   const handleCreateNew = () => {
-    const newId = generateId();
-    const newFile: FileNode = {
-      id: newId,
-      parentId: null,
-      title: 'Untitled',
-      type: NodeType.FILE,
-      category: FileCategory.CHAPTER,
-      content: '',
-      wordCount: 0,
-      lastModified: Date.now()
-    };
+    setState(prev => {
+      const { rootId, newState } = ensureActiveContext(prev);
 
-    setState(prev => ({
-      ...prev,
-      fileMap: { [newId]: newFile }, // Clear old map, focus on single file
-      activeFileId: newId
-    }));
+      const newId = generateId();
+      const newFile: FileNode = {
+        id: newId,
+        parentId: rootId,
+        title: 'Untitled',
+        type: NodeType.FILE,
+        category: FileCategory.CHAPTER,
+        content: '',
+        wordCount: 0,
+        lastModified: Date.now()
+      };
+
+      const root = newState.fileMap[rootId];
+      newState.fileMap[rootId] = {
+        ...root,
+        children: [...(root.children || []), newId],
+        isOpen: true
+      };
+      newState.fileMap[newId] = newFile;
+      newState.activeFileId = newId;
+      newState.sidebarOpen = true;
+
+      return newState;
+    });
   };
 
   const handleOpenFile = async () => {
     try {
       // @ts-ignore
       const [handle] = await window.showOpenFilePicker({
-        types: [{
-          description: 'Text Files',
-          accept: {
-            'text/plain': ['.txt', '.md'],
-          },
-        }],
+        types: [{ description: 'Text Files', accept: { 'text/plain': ['.txt', '.md'] } }],
         multiple: false
       });
 
       const file = await handle.getFile();
       const content = await file.text();
 
-      const newId = generateId();
-      const newFile: FileNode = {
-        id: newId,
+      setState(prev => {
+        const { rootId, newState } = ensureActiveContext(prev);
+        const newId = generateId();
+        const newFile: FileNode = {
+          id: newId,
+          parentId: rootId,
+          title: file.name.replace(/\.(txt|md)$/, ''),
+          type: NodeType.FILE,
+          category: FileCategory.CHAPTER,
+          content: content,
+          wordCount: content.split(/\s+/).length,
+          lastModified: file.lastModified,
+          fileHandle: handle
+        };
+
+        const root = newState.fileMap[rootId];
+        newState.fileMap[rootId] = {
+          ...root,
+          children: [...(root.children || []), newId],
+          isOpen: true
+        };
+        newState.fileMap[newId] = newFile;
+        newState.activeFileId = newId;
+        newState.sidebarOpen = true;
+
+        return newState;
+      });
+
+    } catch (e) {
+      console.warn("Open file cancelled/failed", e);
+    }
+  };
+
+  // Directory Scanner
+  const handleOpenFolder = async () => {
+    try {
+      // @ts-ignore
+      const dirHandle = await window.showDirectoryPicker();
+
+      const bookId = generateId();
+      const rootId = generateId();
+
+      // Recursive scanner
+      const scanDir = async (dir: any, parentId: string): Promise<Record<string, FileNode>> => {
+        let map: Record<string, FileNode> = {};
+
+        for await (const entry of dir.values()) {
+          if (entry.kind === 'file' && (entry.name.endsWith('.txt') || entry.name.endsWith('.md'))) {
+            const file = await entry.getFile();
+            const content = await file.text();
+            const fileId = generateId();
+            map[fileId] = {
+              id: fileId,
+              parentId: parentId,
+              title: entry.name.replace(/\.(txt|md)$/, ''),
+              type: NodeType.FILE,
+              category: FileCategory.CHAPTER,
+              content,
+              wordCount: content.split(/\s+/).length,
+              lastModified: file.lastModified,
+              fileHandle: entry
+            };
+          } else if (entry.kind === 'directory' && !entry.name.startsWith('.')) {
+            const dirId = generateId();
+            const subMap = await scanDir(entry, dirId);
+            map = { ...map, ...subMap };
+            map[dirId] = {
+              id: dirId,
+              parentId: parentId,
+              title: entry.name,
+              type: NodeType.FOLDER,
+              children: Object.values(subMap).filter(n => n.parentId === dirId).map(n => n.id),
+              lastModified: Date.now(),
+              isOpen: false
+            };
+          }
+        }
+        return map;
+      };
+
+      const nodes = await scanDir(dirHandle, rootId);
+
+      // Re-assemble root logic
+      const rootNode: FileNode = {
+        id: rootId,
         parentId: null,
-        title: file.name.replace(/\.(txt|md)$/, ''),
-        type: NodeType.FILE,
-        category: FileCategory.CHAPTER,
-        content: content,
-        wordCount: content.split(/\s+/).length,
-        lastModified: file.lastModified,
-        fileHandle: handle
+        title: dirHandle.name,
+        type: NodeType.FOLDER,
+        children: Object.values(nodes).filter(n => n.parentId === rootId).map(n => n.id),
+        lastModified: Date.now(),
+        isOpen: true
+      };
+      nodes[rootId] = rootNode;
+
+      const newBook: Book = {
+        id: bookId,
+        title: dirHandle.name,
+        rootFolderId: rootId,
+        status: 'Drafting'
       };
 
       setState(prev => ({
         ...prev,
-        fileMap: { [newId]: newFile },
-        activeFileId: newId
+        books: [...prev.books, newBook],
+        fileMap: { ...prev.fileMap, ...nodes },
+        activeBookId: bookId,
+        sidebarOpen: true
       }));
 
-    } catch (err) {
-      // Ignore user abort
-      console.log("Open file cancelled");
+    } catch (e) {
+      console.warn("Folder open failed", e);
     }
   };
 
-  const updateContent = (content: string) => {
-    if (!state.activeFileId) return;
-    setState(prev => ({
-      ...prev,
-      fileMap: {
-        ...prev.fileMap,
-        [prev.activeFileId!]: {
-          ...prev.fileMap[prev.activeFileId!],
-          content,
-          wordCount: content.trim().split(/\s+/).filter(w => w.length > 0).length,
-          lastModified: Date.now()
-        }
-      }
-    }));
+  // --- Sidebar Logic Passthrough ---
+  const handleCreateNode = (type: NodeType, parentId: string) => {
+    // Allow creating "Virtual" nodes in the sidebar
+    const newId = generateId();
+    const newNode: FileNode = {
+      id: newId,
+      parentId,
+      title: type === NodeType.FOLDER ? 'New Folder' : 'Untitled',
+      type,
+      category: FileCategory.IDEA,
+      content: type === NodeType.FILE ? '' : undefined,
+      children: type === NodeType.FOLDER ? [] : undefined,
+      isOpen: true,
+      wordCount: 0,
+      lastModified: Date.now()
+    };
+
+    setState(prev => {
+      const parent = prev.fileMap[parentId];
+      if (!parent) return prev;
+      return {
+        ...prev,
+        fileMap: {
+          ...prev.fileMap,
+          [parentId]: { ...parent, children: [...(parent.children || []), newId], isOpen: true },
+          [newId]: newNode
+        },
+        activeFileId: type === NodeType.FILE ? newId : prev.activeFileId
+      };
+    });
   };
 
-  const updateTitle = (title: string) => {
-    if (!state.activeFileId) return;
-    setState(prev => ({
-      ...prev,
-      fileMap: {
-        ...prev.fileMap,
-        [prev.activeFileId!]: {
-          ...prev.fileMap[prev.activeFileId!],
-          title
-        }
+  const handleDeleteNode = (id: string) => {
+    // NOTE: This only removes from state, NOT from disk (safety)
+    setState(prev => {
+      const parentId = prev.fileMap[id]?.parentId;
+      if (!parentId) return prev; // Don't delete roots
+
+      const newMap = { ...prev.fileMap };
+      delete newMap[id];
+
+      const parent = newMap[parentId];
+      if (parent) {
+        newMap[parentId] = { ...parent, children: parent.children?.filter(c => c !== id) };
       }
-    }));
+
+      return { ...prev, fileMap: newMap, activeFileId: prev.activeFileId === id ? null : prev.activeFileId };
+    });
   };
 
+  const handleDeleteBook = (id: string) => {
+    setState(prev => ({
+      ...prev,
+      books: prev.books.filter(b => b.id !== id),
+      activeBookId: prev.activeBookId === id ? (prev.books[0]?.id || null) : prev.activeBookId
+    }));
+  }
 
   // --- Render ---
 
@@ -344,136 +459,139 @@ const App: React.FC = () => {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-cream-50 dark:bg-neutral-900 p-8 text-center text-gray-900 dark:text-gray-100">
         <div className="max-w-md">
-          <div className="mb-6 flex justify-center text-gold-600">
-            <Icons.Monitor size={64} />
-          </div>
-          <h1 className="text-3xl font-serif font-bold mb-4">
-            BetterWriter is a desktop-first tool.
-          </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400">
-            Please access this site from a computer for the best writing experience.
-          </p>
+          <div className="mb-6 flex justify-center text-gold-600"><Icons.Monitor size={64} /></div>
+          <h1 className="text-3xl font-serif font-bold mb-4">Desktop Access Only</h1>
+          <p className="text-lg text-gray-600 dark:text-gray-400">BetterWriter is optimized for desktop writing.</p>
         </div>
       </div>
     );
   }
 
   if (state.view === ViewMode.LANDING) {
-    return (
-      <LandingPage
-        onStart={handleStart}
-        darkMode={state.darkMode}
-        toggleTheme={() => setState(s => ({ ...s, darkMode: !s.darkMode }))}
-      />
-    );
+    return <LandingPage onStart={handleStart} darkMode={state.darkMode} toggleTheme={() => setState(s => ({ ...s, darkMode: !s.darkMode }))} />;
   }
 
-  // Active File Node
   const activeFile = state.activeFileId ? state.fileMap[state.activeFileId] : null;
+  const activeBook = state.books.find(b => b.id === state.activeBookId);
 
   return (
-    <div className={`h-screen w-full flex flex-col bg-cream-50 dark:bg-neutral-900 text-gray-900 dark:text-cream-100 transition-colors duration-300 font-sans overflow-hidden`}>
+    <div className="h-screen w-full flex overflow-hidden bg-cream-50 dark:bg-neutral-900 text-gray-900 dark:text-cream-100 font-sans transition-colors duration-300">
 
-      {/* Top Navigation - Minimal */}
-      <nav className={`w-full flex items-center justify-between px-6 py-4 z-40 transition-opacity duration-500 min-h-[72px]
-         ${state.focusMode && userActivity ? 'opacity-100 bg-cream-50/90 dark:bg-neutral-900/90 backdrop-blur-md' : ''}
-         ${state.focusMode && !userActivity ? 'opacity-0 pointer-events-none' : 'opacity-100'}
-      `}>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setState(s => ({ ...s, view: ViewMode.LANDING }))} className="hover:opacity-70 transition-opacity">
-            <span className="font-serif font-bold text-xl text-gold-600 dark:text-gold-500">Better Writer</span>
-          </button>
-          {activeFile && (
-            <>
-              <span className="text-gray-300 dark:text-gray-700 mx-2">/</span>
-              <span className="text-sm font-medium text-gray-600 dark:text-gray-300 truncate max-w-[200px]">{activeFile.title}</span>
-            </>
-          )}
-        </div>
+      {/* Sidebar */}
+      <Sidebar
+        isOpen={state.sidebarOpen && !state.focusMode}
+        books={state.books}
+        fileMap={state.fileMap}
+        activeBookId={state.activeBookId}
+        activeFileId={state.activeFileId}
+        rootFolderId={activeBook?.rootFolderId || ''}
+        onCreateNode={handleCreateNode}
+        onDeleteNode={handleDeleteNode}
+        onSelectFile={(id) => setState(s => ({ ...s, activeFileId: id }))}
+        onToggleFolder={(id) => setState(s => ({ ...s, fileMap: { ...s.fileMap, [id]: { ...s.fileMap[id], isOpen: !s.fileMap[id].isOpen } } }))}
+        onRenameNode={(id, title) => setState(s => ({ ...s, fileMap: { ...s.fileMap, [id]: { ...s.fileMap[id], title } } }))}
+        onReorganize={() => { }} // simplified
+        onImportFiles={() => { }} // simplified, use main Open instead
+        onCreateBook={() => { }} // handled by Open Folder usually
+        onSwitchBook={(id) => setState(s => ({ ...s, activeBookId: id }))}
+        onDeleteBook={handleDeleteBook}
+        onRenameBook={(id, title) => setState(s => ({ ...s, books: s.books.map(b => b.id === id ? { ...b, title } : b) }))}
+      />
 
-        {activeFile && (
-          <div className="flex items-center gap-3">
-            {lastSaved > 0 && (
-              <span className="text-xs text-gray-400 mr-2 hidden sm:inline">
-                Saved
-              </span>
+      <div className="flex-1 flex flex-col relative min-w-0 bg-white dark:bg-neutral-800 transition-all duration-300">
+
+        {/* Navbar */}
+        <nav className={`w-full flex items-center justify-between px-6 py-3 border-b border-gray-100 dark:border-white/5 bg-white/50 dark:bg-neutral-800/50 backdrop-blur top-0 z-40 transition-all
+              ${state.focusMode ? (userActivity ? 'opacity-100' : 'opacity-0 pointer-events-none') : 'opacity-100'}
+          `}>
+          <div className="flex items-center gap-4">
+            <button onClick={() => setState(s => ({ ...s, sidebarOpen: !s.sidebarOpen }))} className="p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg text-gray-500">
+              {state.sidebarOpen ? <Icons.Menu size={20} /> : <Icons.ChevronRight size={20} />}
+            </button>
+            <span className="font-serif font-bold text-xl text-gold-600">Better Writer</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Open/Add Actions */}
+            {!state.focusMode && (
+              <div className="mr-4 flex gap-2">
+                <Button onClick={handleOpenFolder} size="sm" variant="ghost" className="hidden md:flex">
+                  <Icons.FolderPlus className="mr-2" size={16} /> Open Folder
+                </Button>
+                <Button onClick={() => setShowExport(true)} variant="ghost" size="sm">
+                  <Icons.Download className="mr-2" size={16} /> Export
+                </Button>
+              </div>
             )}
 
-            <Button onClick={() => saveFile(true)} size="sm" variant="ghost">
-              <Icons.Save className="mr-2" size={16} />
-              Save
-            </Button>
+            {activeFile && (
+              <Button onClick={() => saveFile(true)} size="sm" variant={lastSaved > Date.now() - 2000 ? "primary" : "ghost"} className="transition-all">
+                <Icons.Save className="mr-2" size={16} />
+                {lastSaved > Date.now() - 2000 ? "Saved!" : "Save"}
+              </Button>
+            )}
 
-            <button
-              onClick={() => setState(s => ({ ...s, focusMode: !s.focusMode }))}
-              className={`p-2 rounded-lg transition-colors ${state.focusMode ? 'bg-gold-500 text-white' : 'hover:bg-gray-100 dark:hover:bg-white/5 text-gray-500'}`}
-              title="Focus Mode"
-            >
+            <button onClick={() => setState(s => ({ ...s, focusMode: !s.focusMode }))} className={`p-2 rounded-lg transition-colors ${state.focusMode ? 'bg-gold-500 text-white' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'}`}>
               <Icons.Focus size={20} />
             </button>
           </div>
+        </nav>
+
+        {/* Warning Message */}
+        {permissionMessage && (
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-full text-sm shadow-xl z-50 flex items-center gap-2 animate-in slide-in-from-top-2">
+            <Icons.Info size={16} /> {permissionMessage}
+          </div>
         )}
-      </nav>
 
-      {/* Permission Warning Toast */}
-      {permissionMessage && (
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 bg-blue-600 text-white px-6 py-4 rounded-full shadow-xl animate-in fade-in slide-in-from-top-4 flex items-center gap-3 border border-blue-400">
-          <Icons.Info size={24} className="shrink-0" />
-          <div className="text-sm font-medium pr-2">{permissionMessage}</div>
-        </div>
-      )}
-
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col relative overflow-hidden">
-        {activeFile ? (
-          <div className="flex-1 overflow-y-auto">
+        {/* Content */}
+        <main className="flex-1 overflow-y-auto relative" onClick={() => {
+          if (state.sidebarOpen && window.innerWidth < 768) setState(s => ({ ...s, sidebarOpen: false }));
+        }}>
+          {activeFile ? (
             <Editor
               ref={editorRef}
               content={activeFile.content || ''}
-              onChange={updateContent}
+              onChange={(c) => setState(s => ({ ...s, fileMap: { ...s.fileMap, [activeFile.id]: { ...s.fileMap[activeFile.id], content: c, wordCount: c.split(/\s+/).length, lastModified: Date.now() } } }))}
               title={activeFile.title}
-              onTitleChange={updateTitle}
+              onTitleChange={(t) => setState(s => ({ ...s, fileMap: { ...s.fileMap, [activeFile.id]: { ...s.fileMap[activeFile.id], title: t } } }))}
               focusMode={state.focusMode}
               active={userActivity}
             />
-          </div>
-        ) : (
-          /* Decision Screen */
-          <div className="flex-1 flex flex-col items-center justify-center p-8 animate-in fade-in zoom-in-95 duration-500">
-            <div className="max-w-2xl w-full text-center space-y-12">
-              <div className="space-y-4">
-                <h2 className="text-4xl font-serif font-bold text-gray-900 dark:text-white">Ready to write?</h2>
-                <p className="text-xl text-gray-500 dark:text-gray-400">Start a fresh masterpiece or continue where you left off.</p>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                <button
-                  onClick={handleCreateNew}
-                  className="group flex flex-col items-center p-8 rounded-3xl bg-white dark:bg-neutral-800 border-2 border-transparent hover:border-gold-400 dark:hover:border-gold-500/50 shadow-xl hover:shadow-2xl hover:shadow-gold-500/10 transition-all duration-300 transform hover:-translate-y-1 py-12"
-                >
-                  <div className="w-16 h-16 rounded-2xl bg-gold-100 dark:bg-gold-500/20 text-gold-600 dark:text-gold-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                    <Icons.FilePlus size={32} />
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">New Document</h3>
-                  <p className="text-gray-500 dark:text-gray-400 text-sm">Start with a blank canvas</p>
-                </button>
-
-                <button
-                  onClick={handleOpenFile}
-                  className="group flex flex-col items-center p-8 rounded-3xl bg-white dark:bg-neutral-800 border-2 border-transparent hover:border-gold-400 dark:hover:border-gold-500/50 shadow-xl hover:shadow-2xl hover:shadow-gold-500/10 transition-all duration-300 transform hover:-translate-y-1 py-12"
-                >
-                  <div className="w-16 h-16 rounded-2xl bg-cream-100 dark:bg-neutral-700 text-gray-600 dark:text-gray-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                    <Icons.FolderOpen size={32} />
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Open File</h3>
-                  <p className="text-gray-500 dark:text-gray-400 text-sm">Select a .txt file from your computer</p>
-                </button>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center p-8 animate-in fade-in">
+              <div className="max-w-3xl w-full text-center space-y-12">
+                <h2 className="text-4xl font-serif font-bold text-gray-900 dark:text-white">Workspace</h2>
+                <div className="grid md:grid-cols-3 gap-6">
+                  <button onClick={handleCreateNew} className="p-8 rounded-2xl bg-gray-50 dark:bg-neutral-900/50 hover:bg-white dark:hover:bg-neutral-800 border-2 border-transparent hover:border-gold-400 transition-all group">
+                    <div className="w-12 h-12 bg-gold-100 dark:bg-gold-500/20 text-gold-600 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><Icons.FilePlus size={24} /></div>
+                    <h3 className="font-bold mb-1">New Doc</h3>
+                    <p className="text-xs text-gray-500">Create a scratchpad</p>
+                  </button>
+                  <button onClick={handleOpenFile} className="p-8 rounded-2xl bg-gray-50 dark:bg-neutral-900/50 hover:bg-white dark:hover:bg-neutral-800 border-2 border-transparent hover:border-gold-400 transition-all group">
+                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-500/20 text-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><Icons.FileText size={24} /></div>
+                    <h3 className="font-bold mb-1">Open File</h3>
+                    <p className="text-xs text-gray-500">Edit a single .txt/.md</p>
+                  </button>
+                  <button onClick={handleOpenFolder} className="p-8 rounded-2xl bg-gray-50 dark:bg-neutral-900/50 hover:bg-white dark:hover:bg-neutral-800 border-2 border-transparent hover:border-gold-400 transition-all group">
+                    <div className="w-12 h-12 bg-purple-100 dark:bg-purple-500/20 text-purple-600 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><Icons.FolderOpen size={24} /></div>
+                    <h3 className="font-bold mb-1">Open Project</h3>
+                    <p className="text-xs text-gray-500">Import a folder</p>
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </main>
+          )}
+        </main>
+      </div>
 
+      {showExport && (
+        <ExportDialog
+          onExport={() => alert("Legacy export - Implement new export logic if needed")}
+          onClose={() => setShowExport(false)}
+          bookTitle={activeBook?.title || 'Untitled'}
+        />
+      )}
     </div>
   );
 };
