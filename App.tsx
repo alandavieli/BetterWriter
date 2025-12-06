@@ -573,7 +573,7 @@ const App: React.FC = () => {
     ${uiOpacity}`;
 
   return (
-    <div className={`h - screen w - full flex overflow - hidden bg - cream - 50 dark: bg - neutral - 900 text - gray - 900 dark: text - cream - 100 transition - colors duration - 300 font - sans`}>
+    <div className={`h-screen w-full flex overflow-hidden bg-cream-50 dark:bg-neutral-900 text-gray-900 dark:text-cream-100 transition-colors duration-300 font-sans`}>
 
       {/* Top Navigation */}
       <nav className={navClasses}>
