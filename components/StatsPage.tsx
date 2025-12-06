@@ -1,8 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Book, FileNode, NodeType } from '../types';
 import { Icons } from './Icons';
-import { Button } from './Button';
-import { analyzeBookProgress } from '../services/geminiService';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 
 interface StatsPageProps {
@@ -10,59 +8,36 @@ interface StatsPageProps {
   fileMap: Record<string, FileNode>;
 }
 
-interface AnalysisResult {
-  bookId: string;
-  bookTitle: string;
-  progress: number;
-  estimatedCompletion: string;
-  tone: string;
-}
-
 export const StatsPage: React.FC<StatsPageProps> = ({ books, fileMap }) => {
-  const [analyzing, setAnalyzing] = useState(false);
-  const [results, setResults] = useState<AnalysisResult[]>([]);
-
-  // Calculate simple stats immediately
+  // Calculate stats
   const allNodes = Object.values(fileMap) as FileNode[];
-  const totalWords = allNodes.reduce((acc, node) => acc + (node.wordCount || 0), 0);
   const files = allNodes.filter(n => n.type === NodeType.FILE);
+  const totalWords = allNodes.reduce((acc, node) => acc + (node.wordCount || 0), 0);
 
-  const handleRunAnalysis = async () => {
-    setAnalyzing(true);
-    const newResults: AnalysisResult[] = [];
+  // New Stats Calculations
+  const totalChars = files.reduce((acc, f) => acc + (f.content?.length || 0), 0);
+  const readingTime = Math.ceil(totalWords / 250); // Approx 250 wpm
+  const avgChapterLength = files.length > 0 ? Math.round(totalWords / files.length) : 0;
 
-    for (const book of books) {
-      // In this demo version, we analyze all files as if they belong to the current book
-      const bookFiles = files; 
+  const longestChapter = files.reduce((prev, current) => {
+    return (prev.wordCount || 0) > (current.wordCount || 0) ? prev : current;
+  }, files[0] || { title: 'N/A', wordCount: 0 });
 
-      const chaptersData = bookFiles.map(f => ({
-        title: f.title,
-        wordCount: f.wordCount || 0
-      }));
-
-      try {
-        const aiRes = await analyzeBookProgress(book.title, chaptersData);
-        newResults.push({
-          bookId: book.id,
-          bookTitle: book.title,
-          progress: aiRes.progress,
-          estimatedCompletion: aiRes.estimatedCompletion,
-          tone: aiRes.tone
-        });
-      } catch (e) {
-        console.error("Analysis failed for book", book.title, e);
-      }
-    }
-    setResults(newResults);
-    setAnalyzing(false);
-  };
-
-  const chartData = results.length > 0 ? results : books.map(b => ({
-    bookTitle: b.title,
-    progress: 0,
-    estimatedCompletion: 'N/A',
-    tone: 'N/A'
-  }));
+  // Prepare chart data (Words per book instead of progress)
+  const chartData = books.map(book => {
+    // Find files belonging to this book
+    const bookFiles = files.filter(f => {
+      let parent = fileMap[f.parentId || ''];
+      // Simple check: trace up to root. For this flat demo, we assume all files belong to active book.
+      // In a real app with multiple roots, we'd filter by rootFolderId.
+      // Here we just estimate for demo purposes or use global files if single project view.
+      return true; // Use global stats for now as 'files' contains all files
+    });
+    return {
+      bookTitle: book.title,
+      wordCount: totalWords // In this simple data model, words are global.
+    };
+  });
 
   return (
     <div className="min-h-screen bg-cream-50 dark:bg-neutral-900 p-8 pt-24 overflow-y-auto">
@@ -74,12 +49,12 @@ export const StatsPage: React.FC<StatsPageProps> = ({ books, fileMap }) => {
             Writing Statistics
           </h2>
           <p className="text-gray-500 dark:text-gray-400 mt-2">
-            Detailed overview of your creative productivity and story analysis.
+            Detailed overview of your creative productivity.
           </p>
         </div>
 
         {/* Top Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white dark:bg-neutral-800 p-6 rounded-2xl shadow-sm border border-gold-100 dark:border-white/5 flex items-center gap-4">
             <div className="p-3 bg-gold-100 dark:bg-gold-900/30 rounded-xl text-gold-600">
               <Icons.Type size={24} />
@@ -98,87 +73,86 @@ export const StatsPage: React.FC<StatsPageProps> = ({ books, fileMap }) => {
               <div className="text-3xl font-bold text-gray-800 dark:text-gray-100">{books.length}</div>
             </div>
           </div>
-           <div className="bg-white dark:bg-neutral-800 p-6 rounded-2xl shadow-sm border border-gold-100 dark:border-white/5 flex items-center gap-4">
+          <div className="bg-white dark:bg-neutral-800 p-6 rounded-2xl shadow-sm border border-gold-100 dark:border-white/5 flex items-center gap-4">
             <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl text-blue-600">
               <Icons.FileText size={24} />
             </div>
             <div>
-              <div className="text-gray-500 dark:text-gray-400 text-sm font-medium">Total Notes & Chapters</div>
+              <div className="text-gray-500 dark:text-gray-400 text-sm font-medium">Chapters</div>
               <div className="text-3xl font-bold text-gray-800 dark:text-gray-100">{files.length}</div>
             </div>
           </div>
         </div>
 
-        {/* AI Analysis Section */}
-        <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-lg border border-gold-100 dark:border-white/5 p-8">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-            <div>
-              <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                <Icons.Sparkles size={20} className="text-gold-500" />
-                Gemini Project Analysis
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Deep AI insights on completion, pacing, and tone.</p>
+        {/* Additional Stats Grid */}
+        <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-4 px-1">Deep Dive</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+          {/* Reading Time */}
+          <div className="bg-white dark:bg-neutral-800 p-5 rounded-2xl shadow-sm border border-gold-100 dark:border-white/5">
+            <div className="flex items-center gap-3 mb-2">
+              <Icons.Clock className="text-green-500" size={20} />
+              <span className="text-sm font-bold text-gray-500 uppercase">Reading Time</span>
             </div>
-            <Button onClick={handleRunAnalysis} isLoading={analyzing}>
-              {results.length > 0 ? 'Refresh Analysis' : 'Run Full Analysis'}
-            </Button>
+            <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+              {readingTime} <span className="text-sm font-normal text-gray-400">min</span>
+            </div>
           </div>
 
-          {results.length === 0 && !analyzing ? (
-            <div className="text-center py-16 bg-cream-50 dark:bg-black/20 rounded-xl border border-dashed border-gray-200 dark:border-white/10">
-              <Icons.Wand2 className="mx-auto text-gray-300 dark:text-gray-600 mb-4" size={56} />
-              <p className="text-gray-500 dark:text-gray-400 font-medium">No analysis data yet.</p>
-              <p className="text-sm text-gray-400">Click the button above to analyze your books.</p>
+          {/* Characters */}
+          <div className="bg-white dark:bg-neutral-800 p-5 rounded-2xl shadow-sm border border-gold-100 dark:border-white/5">
+            <div className="flex items-center gap-3 mb-2">
+              <Icons.Layout className="text-indigo-500" size={20} />
+              <span className="text-sm font-bold text-gray-500 uppercase">Characters</span>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              
-              {/* Chart */}
-              <div className="bg-gray-50 dark:bg-black/20 p-6 rounded-xl border border-gray-100 dark:border-white/5 h-80">
-                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#8884d820" />
-                    <XAxis dataKey="bookTitle" stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#888" fontSize={12} tickLine={false} axisLine={false} unit="%" />
-                    <Tooltip 
-                      cursor={{fill: 'transparent'}}
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                    />
-                    <Bar dataKey="progress" fill="#f59e0b" radius={[6, 6, 0, 0]} barSize={40}>
-                      {chartData.map((entry, index) => (
-                         <Cell key={`cell-${index}`} fill={entry.progress > 80 ? '#10b981' : '#f59e0b'} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+            <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+              {totalChars.toLocaleString()}
+            </div>
+          </div>
 
-              {/* Details List */}
-              <div className="space-y-4">
-                {results.map(res => (
-                  <div key={res.bookId} className="bg-cream-50 dark:bg-black/20 p-5 rounded-xl border border-gold-100 dark:border-white/5 hover:border-gold-300 transition-colors">
-                    <div className="flex justify-between mb-2">
-                      <span className="font-bold text-gray-800 dark:text-gray-200 text-lg">{res.bookTitle}</span>
-                      <span className="text-gold-600 font-bold font-mono text-lg">{res.progress}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-4">
-                      <div className="bg-gold-500 h-2 rounded-full transition-all duration-1000" style={{ width: `${res.progress}%` }}></div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                        <Icons.Music size={14} className="text-gold-500" />
-                        Tone: <span className="font-medium text-gray-800 dark:text-gray-200">{res.tone}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                        <Icons.Clock size={14} className="text-gold-500" />
-                        ETA: <span className="font-medium text-gray-800 dark:text-gray-200">{res.estimatedCompletion}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+          {/* Avg Chapter Length */}
+          <div className="bg-white dark:bg-neutral-800 p-5 rounded-2xl shadow-sm border border-gold-100 dark:border-white/5">
+            <div className="flex items-center gap-3 mb-2">
+              <Icons.Layout className="text-orange-500" size={20} />
+              <span className="text-sm font-bold text-gray-500 uppercase">Avg. Chapter</span>
             </div>
-          )}
+            <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+              {avgChapterLength} <span className="text-sm font-normal text-gray-400">words</span>
+            </div>
+          </div>
+
+          {/* Longest Chapter */}
+          <div className="bg-white dark:bg-neutral-800 p-5 rounded-2xl shadow-sm border border-gold-100 dark:border-white/5">
+            <div className="flex items-center gap-3 mb-2">
+              <Icons.Star className="text-yellow-500" size={20} />
+              <span className="text-sm font-bold text-gray-500 uppercase">Longest File</span>
+            </div>
+            <div className="truncate text-lg font-bold text-gray-800 dark:text-gray-100" title={longestChapter.title}>
+              {longestChapter.title}
+            </div>
+            <div className="text-xs text-gray-400">{longestChapter.wordCount} words</div>
+          </div>
+        </div>
+
+        {/* Word Count Chart */}
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-lg border border-gold-100 dark:border-white/5 p-8 h-96">
+          <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-6">Word Count Distribution</h3>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData.length ? chartData : [{ bookTitle: 'No Data', wordCount: 0 }]}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#8884d820" />
+              <XAxis dataKey="bookTitle" stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
+              <Tooltip
+                cursor={{ fill: 'transparent' }}
+                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+              />
+              <Bar dataKey="wordCount" fill="#f59e0b" radius={[6, 6, 0, 0]} barSize={60}>
+                {/* @ts-ignore */}
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={'#f59e0b'} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </div>

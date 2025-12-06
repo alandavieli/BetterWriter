@@ -106,7 +106,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, darkMode, tog
             </h1>
             
             <p className="text-xl md:text-2xl text-gray-500 dark:text-gray-400 max-w-2xl mx-auto mb-12 leading-relaxed font-light">
-                An elegant, distraction-free writing environment with an intelligent AI co-author that understands your plot, characters, and style.
+                An elegant, distraction-free writing environment. Free, forever.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">

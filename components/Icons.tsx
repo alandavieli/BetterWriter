@@ -35,7 +35,9 @@ import {
   Upload,
   FolderPlus,
   PlayCircle,
-  Cloud
+
+  Cloud,
+  Star
 } from 'lucide-react';
 
 export const Icons = {
@@ -74,6 +76,8 @@ export const Icons = {
   Instagram,
   Upload,
   FolderPlus,
+
   PlayCircle,
-  Cloud
+  Cloud,
+  Star
 };
