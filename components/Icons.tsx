@@ -38,7 +38,10 @@ import {
 
   Cloud,
   Star,
-  Heart
+  Heart,
+  Monitor,
+  FilePlus,
+  Info
 } from 'lucide-react';
 
 export const Icons = {
@@ -81,5 +84,8 @@ export const Icons = {
   PlayCircle,
   Cloud,
   Star,
-  Heart
+  Heart,
+  Monitor,
+  FilePlus,
+  Info
 };
