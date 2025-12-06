@@ -29,7 +29,7 @@ const getInitialState = (): AppState => {
   const savedState = localStorage.getItem('better-writer-state');
   let initialState = savedState ? JSON.parse(savedState) : defaultState;
 
-  // Ensure sidebar is open by default if we are in editor info
+  // Ensure sidebar is open by default if we are in editor mode
   if (initialState.view === ViewMode.EDITOR) {
     initialState.sidebarOpen = true;
   }
@@ -131,11 +131,13 @@ const App: React.FC = () => {
     try {
       let handle = fileNode.fileHandle;
 
+      // Handle "New/Untitled" files that haven't been saved to disk yet
       if (!handle) {
         if (manual) {
           // @ts-ignore
           handle = await window.showSaveFilePicker({
             types: [{ description: 'Text Files', accept: { 'text/plain': ['.txt'] } }],
+            suggestedName: fileNode.title || 'Untitled'
           });
           if (!handle) return;
 
@@ -153,11 +155,14 @@ const App: React.FC = () => {
             }
           }));
           // Continue to save with this new handle
+          // NOTE: We need to use 'handle' variable here, 
+          // but handle is local. fileNode is stale.
         } else {
           return; // Cannot auto-save
         }
       }
 
+      // If we still don't have a handle (user cancelled save), abort
       if (!handle) return;
 
       if (await verifyPermission(handle, true)) {
@@ -174,7 +179,7 @@ const App: React.FC = () => {
     }
   };
 
-  // Auto-save
+  // Auto-save logic
   const stateRef = useRef(state);
   useEffect(() => { stateRef.current = state; }, [state]);
 
@@ -205,7 +210,10 @@ const App: React.FC = () => {
 
   // --- Actions ---
 
-  const handleStart = () => setState(prev => ({ ...prev, view: ViewMode.EDITOR, sidebarOpen: true }));
+  const handleStart = () => {
+    // Switch view to EDITOR, but ensure activeFile is NULL so "Decision Screen" shows
+    setState(prev => ({ ...prev, view: ViewMode.EDITOR, activeFileId: null }));
+  };
 
   // Helper to ensure we have a valid book/root to attach files to
   const ensureActiveContext = (prevState: AppState): { bookId: string, rootId: string, newState: AppState } => {
@@ -264,7 +272,7 @@ const App: React.FC = () => {
       };
       newState.fileMap[newId] = newFile;
       newState.activeFileId = newId;
-      newState.sidebarOpen = true;
+      newState.sidebarOpen = true; // Show sidebar automatically
 
       return newState;
     });
@@ -473,13 +481,14 @@ const App: React.FC = () => {
 
   const activeFile = state.activeFileId ? state.fileMap[state.activeFileId] : null;
   const activeBook = state.books.find(b => b.id === state.activeBookId);
+  const showSidebar = state.sidebarOpen && !state.focusMode;
 
   return (
     <div className="h-screen w-full flex overflow-hidden bg-cream-50 dark:bg-neutral-900 text-gray-900 dark:text-cream-100 font-sans transition-colors duration-300">
 
       {/* Sidebar */}
       <Sidebar
-        isOpen={state.sidebarOpen && !state.focusMode}
+        isOpen={showSidebar}
         books={state.books}
         fileMap={state.fileMap}
         activeBookId={state.activeBookId}
@@ -498,7 +507,7 @@ const App: React.FC = () => {
         onRenameBook={(id, title) => setState(s => ({ ...s, books: s.books.map(b => b.id === id ? { ...b, title } : b) }))}
       />
 
-      <div className="flex-1 flex flex-col relative min-w-0 bg-white dark:bg-neutral-800 transition-all duration-300">
+      <div className={`flex-1 flex flex-col relative min-w-0 bg-white dark:bg-neutral-800 transition-all duration-300 ${showSidebar ? 'pl-72' : ''}`}>
 
         {/* Navbar */}
         <nav className={`w-full flex items-center justify-between px-6 py-3 border-b border-gray-100 dark:border-white/5 bg-white/50 dark:bg-neutral-800/50 backdrop-blur top-0 z-40 transition-all
