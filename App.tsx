@@ -63,6 +63,15 @@ const App: React.FC = () => {
   const editorRef = useRef<EditorHandle>(null);
   const autoSaveIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // --- Dark Mode Sync ---
+  useEffect(() => {
+    if (state.darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [state.darkMode]);
+
   // ... (existing helper effects) ...
 
   const verifyPermission = async (fileHandle: FileSystemFileHandle, readWrite: boolean) => {
