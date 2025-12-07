@@ -76,11 +76,12 @@ const App: React.FC = () => {
   useEffect(() => {
     if (state.darkMode) document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
-
+    // We only persist the basic structure/content.
     const stateToSave = {
       ...state,
       fileMap: Object.fromEntries(
         Object.entries(state.fileMap).map(([k, v]) => {
+          // @ts-ignore
           const { fileHandle, ...rest } = v;
           return [k, rest];
         })
@@ -112,7 +113,8 @@ const App: React.FC = () => {
   // --- File System Logic ---
 
   const verifyPermission = async (fileHandle: FileSystemFileHandle, readWrite: boolean) => {
-    const options: FileSystemHandlePermissionDescriptor = { mode: readWrite ? 'readwrite' : 'read' };
+    // @ts-ignore
+    const options: any = { mode: readWrite ? 'readwrite' : 'read' };
     // @ts-ignore
     if ((await fileHandle.queryPermission(options)) === 'granted') return true;
     setPermissionMessage("Please click 'Allow' to authorize saving.");
@@ -317,7 +319,122 @@ const App: React.FC = () => {
     });
   };
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
+
+  // --- Legacy Fallbacks ---
+  const handleLegacyFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const content = await file.text();
+      const newId = generateId();
+      const newFile: FileNode = {
+        id: newId,
+        parentId: null, // Legacy opens as independent file
+        title: file.name.replace(/\.(txt|md)$/, ''),
+        type: NodeType.FILE,
+        category: FileCategory.CHAPTER,
+        content: content,
+        wordCount: content.split(/\s+/).length,
+        lastModified: file.lastModified
+      };
+
+      setState(prev => {
+        const { rootId, newState } = ensureActiveContext(prev);
+        // Attach to workspace root
+        const root = newState.fileMap[rootId];
+        newState.fileMap[rootId] = {
+          ...root,
+          children: [...(root.children || []), newId],
+          isOpen: true
+        };
+        newState.fileMap[newId] = { ...newFile, parentId: rootId };
+        newState.activeFileId = newId;
+        newState.sidebarOpen = true;
+        return newState;
+      });
+    }
+    // Reset
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleLegacyFolderChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+
+    const bookId = generateId();
+    const rootId = generateId();
+    const rootName = e.target.files[0].webkitRelativePath.split('/')[0] || 'Imported Folder';
+
+    const map: Record<string, FileNode> = {};
+    const fileIds: string[] = [];
+    let firstFileId: string | null = null;
+
+    // Simple flat map for legacy folder import as recursive reconstruction from FileList is complex
+    // We will create a single root folder and put all files in it for simplicity/robustness
+    for (let i = 0; i < e.target.files.length; i++) {
+      const file = e.target.files[i];
+      if (file.name.endsWith('.txt') || file.name.endsWith('.md')) {
+        const content = await file.text();
+        const fileId = generateId();
+        map[fileId] = {
+          id: fileId,
+          parentId: rootId,
+          title: file.name.replace(/\.(txt|md)$/, ''),
+          type: NodeType.FILE,
+          category: FileCategory.CHAPTER,
+          content,
+          wordCount: content.split(/\s+/).length,
+          lastModified: file.lastModified
+        };
+        fileIds.push(fileId);
+        if (!firstFileId) firstFileId = fileId;
+      }
+    }
+
+    if (Object.keys(map).length === 0) {
+      alert("No text files found in folder.");
+      return;
+    }
+
+    const rootNode: FileNode = {
+      id: rootId,
+      parentId: null,
+      title: rootName,
+      type: NodeType.FOLDER,
+      children: fileIds,
+      lastModified: Date.now(),
+      isOpen: true
+    };
+    map[rootId] = rootNode;
+
+    const newBook: Book = {
+      id: bookId,
+      title: rootName,
+      rootFolderId: rootId,
+      status: 'Drafting'
+    };
+
+    setState(prev => ({
+      ...prev,
+      books: [...prev.books, newBook],
+      fileMap: { ...prev.fileMap, ...map },
+      activeBookId: bookId,
+      activeFileId: firstFileId, // Auto-open first file
+      sidebarOpen: true
+    }));
+
+    if (folderInputRef.current) folderInputRef.current.value = '';
+  }
+
+
   const handleOpenFile = async () => {
+    // Check for API Support
+    // @ts-ignore
+    if (typeof window.showOpenFilePicker !== 'function') {
+      fileInputRef.current?.click();
+      return;
+    }
+
     try {
       // @ts-ignore
       const [handle] = await window.showOpenFilePicker({
@@ -357,18 +474,29 @@ const App: React.FC = () => {
       });
 
     } catch (e) {
-      console.warn("Open file cancelled/failed", e);
+      if ((e as Error).name !== 'AbortError') {
+        console.warn("Open file cancelled/failed", e);
+        alert("Error opening file. Please try the standard upload button if this persists.");
+      }
     }
   };
 
   // Directory Scanner
   const handleOpenFolder = async () => {
+    // Check for API Support
+    // @ts-ignore
+    if (typeof window.showDirectoryPicker !== 'function') {
+      folderInputRef.current?.click();
+      return;
+    }
+
     try {
       // @ts-ignore
       const dirHandle = await window.showDirectoryPicker();
 
       const bookId = generateId();
       const rootId = generateId();
+      let firstFileId: string | null = null;
 
       // Recursive scanner
       const scanDir = async (dir: any, parentId: string): Promise<Record<string, FileNode>> => {
@@ -390,6 +518,7 @@ const App: React.FC = () => {
               lastModified: file.lastModified,
               fileHandle: entry
             };
+            if (!firstFileId) firstFileId = fileId;
           } else if (entry.kind === 'directory' && !entry.name.startsWith('.')) {
             const dirId = generateId();
             const subMap = await scanDir(entry, dirId);
@@ -434,11 +563,15 @@ const App: React.FC = () => {
         books: [...prev.books, newBook],
         fileMap: { ...prev.fileMap, ...nodes },
         activeBookId: bookId,
+        activeFileId: firstFileId, // Auto-open first file found!
         sidebarOpen: true
       }));
 
     } catch (e) {
-      console.warn("Folder open failed", e);
+      if ((e as Error).name !== 'AbortError') {
+        console.warn("Folder open failed", e);
+        alert("Error opening folder. Please try again.");
+      }
     }
   };
 
@@ -660,6 +793,25 @@ const App: React.FC = () => {
           bookTitle={activeBook?.title || 'Untitled'}
         />
       )}
+
+      {/* Hidden Inputs for Legacy Support */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleLegacyFileChange}
+        className="hidden"
+        accept=".txt,.md"
+      />
+      <input
+        type="file"
+        ref={folderInputRef}
+        onChange={handleLegacyFolderChange}
+        className="hidden"
+        // @ts-ignore
+        webkitdirectory=""
+        directory=""
+        multiple
+      />
     </div>
   );
 };
