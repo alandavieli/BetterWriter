@@ -28,7 +28,7 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
-        serif: ['Georgia', 'serif'],
+        serif: ['Merriweather', 'serif'],
       },
       animation: {
         'spin-slow': 'spin 3s linear infinite',
