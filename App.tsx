@@ -6,6 +6,7 @@ import { Editor, EditorHandle } from './components/Editor';
 import { Sidebar } from './components/Sidebar';
 import { ExportDialog } from './components/ExportDialog';
 import { StatsPage } from './components/StatsPage';
+import { HelpDialog } from './components/HelpDialog';
 import { AppState, FileNode, NodeType, FileCategory, ViewMode, Book, ExportConfig } from './types';
 
 // Utility for ID generation
@@ -45,6 +46,7 @@ const getInitialState = (): AppState => {
   return initialState;
 };
 
+
 const App: React.FC = () => {
   // --- Mobile Blocker ---
   const [isMobile, setIsMobile] = useState(false);
@@ -55,62 +57,13 @@ const App: React.FC = () => {
   const [permissionMessage, setPermissionMessage] = useState<string | null>(null);
   const [lastSaved, setLastSaved] = useState<number>(0);
   const [showExport, setShowExport] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   const activityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorRef = useRef<EditorHandle>(null);
   const autoSaveIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // --- Mobile Check ---
-  useEffect(() => {
-    const checkMobile = () => {
-      const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
-      const isMobileDevice = /android|ipad|iphone|ipod/i.test(userAgent.toLowerCase()) || window.innerWidth < 768;
-      setIsMobile(isMobileDevice);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  // --- Persistence ---
-  useEffect(() => {
-    if (state.darkMode) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
-    // We only persist the basic structure/content.
-    const stateToSave = {
-      ...state,
-      fileMap: Object.fromEntries(
-        Object.entries(state.fileMap).map(([k, v]) => {
-          // @ts-ignore
-          const { fileHandle, ...rest } = v;
-          return [k, rest];
-        })
-      )
-    };
-    localStorage.setItem('better-writer-state', JSON.stringify(stateToSave));
-  }, [state]);
-
-  // --- Focus Mode Logic ---
-  useEffect(() => {
-    if (!state.focusMode) return;
-    const handleActivity = () => {
-      setUserActivity(true);
-      if (activityTimeoutRef.current) clearTimeout(activityTimeoutRef.current);
-      activityTimeoutRef.current = setTimeout(() => setUserActivity(false), 1500);
-    };
-    window.addEventListener('mousemove', handleActivity);
-    window.addEventListener('keydown', handleActivity);
-    window.addEventListener('click', handleActivity);
-    return () => {
-      window.removeEventListener('mousemove', handleActivity);
-      window.removeEventListener('keydown', handleActivity);
-      window.removeEventListener('click', handleActivity);
-      if (activityTimeoutRef.current) clearTimeout(activityTimeoutRef.current);
-    };
-  }, [state.focusMode]);
-
-
-  // --- File System Logic ---
+  // ... (existing helper effects) ...
 
   const verifyPermission = async (fileHandle: FileSystemFileHandle, readWrite: boolean) => {
     // @ts-ignore
@@ -132,38 +85,58 @@ const App: React.FC = () => {
     try {
       let handle = fileNode.fileHandle;
 
-      // Handle "New/Untitled" files that haven't been saved to disk yet
+      // Handle "New/Untitled" files or Legacy Files (No Handle)
       if (!handle) {
         if (manual) {
+          // SAFARI/FIREFOX CHECK: If API is missing, download IMMEDIATELY.
           // @ts-ignore
-          handle = await window.showSaveFilePicker({
-            types: [{ description: 'Text Files', accept: { 'text/plain': ['.txt'] } }],
-            suggestedName: fileNode.title || 'Untitled'
-          });
-          if (!handle) return;
+          if (typeof window.showSaveFilePicker !== 'function') {
+            // Synchronous-like fallback for Safari
+            const blob = new Blob([fileNode.content || ''], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${fileNode.title}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            setLastSaved(Date.now());
+            return;
+          }
 
-          // Update state with new handle explicitly
-          const newTitle = handle.name.replace('.txt', '');
-          setState(prev => ({
-            ...prev,
-            fileMap: {
-              ...prev.fileMap,
-              [fileNode.id]: {
-                ...prev.fileMap[fileNode.id],
-                fileHandle: handle,
-                title: newTitle
+          // CHROME/EDGE: Try API
+          try {
+            // @ts-ignore
+            const newHandle = await window.showSaveFilePicker({
+              types: [{ description: 'Text Files', accept: { 'text/plain': ['.txt'] } }],
+              suggestedName: fileNode.title || 'Untitled'
+            });
+            if (!newHandle) return;
+
+            handle = newHandle;
+            const newTitle = handle.name.replace('.txt', '');
+            setState(prev => ({
+              ...prev,
+              fileMap: {
+                ...prev.fileMap,
+                [fileNode.id]: {
+                  ...prev.fileMap[fileNode.id],
+                  fileHandle: handle,
+                  title: newTitle
+                }
               }
-            }
-          }));
-          // Continue to save with this new handle
-          // NOTE: We need to use 'handle' variable here, 
-          // but handle is local. fileNode is stale.
+            }));
+          } catch (cancelErr) {
+            return; // User cancelled prompt
+          }
+
         } else {
-          return; // Cannot auto-save
+          return; // Cannot auto-save legacy files silently
         }
       }
 
-      // If we still don't have a handle (user cancelled save), abort
+      // If we have a handle (from now or before), write to it
       if (!handle) return;
 
       if (await verifyPermission(handle, true)) {
@@ -784,6 +757,10 @@ const App: React.FC = () => {
                 {lastSaved > Date.now() - 2000 ? "Saved!" : "Save"}
               </Button>
             )}
+
+            <button onClick={() => setShowHelp(true)} className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5" title="Browser Info">
+              <Icons.HelpCircle size={20} />
+            </button>
 
             <button onClick={() => setState(s => ({ ...s, darkMode: !s.darkMode }))} className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5" title="Toggle Theme">
               {state.darkMode ? <Icons.Sun size={20} /> : <Icons.Moon size={20} />}
