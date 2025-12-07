@@ -5,6 +5,7 @@ import { LandingPage } from './components/LandingPage';
 import { Editor, EditorHandle } from './components/Editor';
 import { Sidebar } from './components/Sidebar';
 import { ExportDialog } from './components/ExportDialog';
+import { StatsPage } from './components/StatsPage';
 import { AppState, FileNode, NodeType, FileCategory, ViewMode, Book, ExportConfig } from './types';
 
 // Utility for ID generation
@@ -76,8 +77,6 @@ const App: React.FC = () => {
     if (state.darkMode) document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
 
-    // We don't persist file handles in localStorage as they are not serializable
-    // We only persist the basic structure/content.
     const stateToSave = {
       ...state,
       fileMap: Object.fromEntries(
@@ -215,6 +214,12 @@ const App: React.FC = () => {
     setState(prev => ({ ...prev, view: ViewMode.EDITOR, activeFileId: null }));
   };
 
+  const handleExit = () => {
+    // Clear persistence of view state to ensure true landing logic next time
+    const s = { ...state, view: ViewMode.LANDING, activeFileId: null };
+    setState(s);
+  };
+
   // Helper to ensure we have a valid book/root to attach files to
   const ensureActiveContext = (prevState: AppState): { bookId: string, rootId: string, newState: AppState } => {
     let newState = { ...prevState };
@@ -246,6 +251,40 @@ const App: React.FC = () => {
     }
     // @ts-ignore
     return { bookId, rootId, newState };
+  };
+
+  const handleCreateBook = () => {
+    const name = prompt("Enter project name:");
+    if (!name) return;
+
+    const bookId = generateId();
+    const rootId = generateId();
+
+    const newBook: Book = {
+      id: bookId,
+      title: name,
+      rootFolderId: rootId,
+      status: 'Drafting'
+    };
+
+    const newRoot: FileNode = {
+      id: rootId,
+      parentId: null,
+      title: name,
+      type: NodeType.FOLDER,
+      children: [],
+      lastModified: Date.now(),
+      isOpen: true
+    };
+
+    setState(prev => ({
+      ...prev,
+      books: [...prev.books, newBook],
+      fileMap: { ...prev.fileMap, [rootId]: newRoot },
+      activeBookId: bookId,
+      // Switch to this new project
+      sidebarOpen: true
+    }));
   };
 
   const handleCreateNew = () => {
@@ -479,6 +518,20 @@ const App: React.FC = () => {
     return <LandingPage onStart={handleStart} darkMode={state.darkMode} toggleTheme={() => setState(s => ({ ...s, darkMode: !s.darkMode }))} />;
   }
 
+  if (state.view === ViewMode.STATS) {
+    // Simplified stats component usage
+    return (
+      <div className="relative">
+        <div className="fixed top-4 right-4 z-50">
+          <Button onClick={() => setState(s => ({ ...s, view: ViewMode.EDITOR }))} variant="ghost">
+            <Icons.X size={24} /> Close
+          </Button>
+        </div>
+        <StatsPage books={state.books} fileMap={state.fileMap} />
+      </div>
+    );
+  }
+
   const activeFile = state.activeFileId ? state.fileMap[state.activeFileId] : null;
   const activeBook = state.books.find(b => b.id === state.activeBookId);
   const showSidebar = state.sidebarOpen && !state.focusMode;
@@ -500,8 +553,8 @@ const App: React.FC = () => {
         onToggleFolder={(id) => setState(s => ({ ...s, fileMap: { ...s.fileMap, [id]: { ...s.fileMap[id], isOpen: !s.fileMap[id].isOpen } } }))}
         onRenameNode={(id, title) => setState(s => ({ ...s, fileMap: { ...s.fileMap, [id]: { ...s.fileMap[id], title } } }))}
         onReorganize={() => { }} // simplified
-        onImportFiles={() => { }} // simplified, use main Open instead
-        onCreateBook={() => { }} // handled by Open Folder usually
+        onOpenFolder={handleOpenFolder}
+        onCreateBook={handleCreateBook}
         onSwitchBook={(id) => setState(s => ({ ...s, activeBookId: id }))}
         onDeleteBook={handleDeleteBook}
         onRenameBook={(id, title) => setState(s => ({ ...s, books: s.books.map(b => b.id === id ? { ...b, title } : b) }))}
@@ -524,11 +577,11 @@ const App: React.FC = () => {
             {/* Open/Add Actions */}
             {!state.focusMode && (
               <div className="mr-4 flex gap-2">
-                <Button onClick={handleOpenFolder} size="sm" variant="ghost" className="hidden md:flex">
+                <Button onClick={handleOpenFolder} size="sm" variant="ghost" className="hidden md:flex text-gray-500 hover:text-gold-600">
                   <Icons.FolderPlus className="mr-2" size={16} /> Open Folder
                 </Button>
-                <Button onClick={() => setShowExport(true)} variant="ghost" size="sm">
-                  <Icons.Download className="mr-2" size={16} /> Export
+                <Button onClick={() => setState(s => ({ ...s, view: ViewMode.STATS }))} variant="ghost" size="sm" className="hidden md:flex text-gray-500 hover:text-gold-600">
+                  <Icons.BarChart2 className="mr-2" size={16} /> Stats
                 </Button>
               </div>
             )}
@@ -540,9 +593,15 @@ const App: React.FC = () => {
               </Button>
             )}
 
-            <button onClick={() => setState(s => ({ ...s, focusMode: !s.focusMode }))} className={`p-2 rounded-lg transition-colors ${state.focusMode ? 'bg-gold-500 text-white' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'}`}>
+            <button onClick={() => setState(s => ({ ...s, focusMode: !s.focusMode }))} className={`p-2 rounded-lg transition-colors ${state.focusMode ? 'bg-gold-500 text-white' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'}`} title="Focus Mode">
               <Icons.Focus size={20} />
             </button>
+
+            {!state.focusMode && (
+              <button onClick={handleExit} className="p-2 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 ml-2" title="Exit to Home">
+                <Icons.LogOut size={20} />
+              </button>
+            )}
           </div>
         </nav>
 

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { FileNode, NodeType, Book } from '../types';
 import { Icons } from './Icons';
 
@@ -16,7 +16,7 @@ interface SidebarProps {
   onToggleFolder: (id: string) => void;
   onRenameNode: (id: string, newTitle: string) => void;
   onReorganize: (moves: any) => void;
-  onImportFiles: (files: FileList) => void;
+  onOpenFolder: () => void;
   onCreateBook: () => void;
   onSwitchBook: (id: string) => void;
   onDeleteBook: (id: string) => void;
@@ -36,7 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleFolder,
   onRenameNode,
   onReorganize,
-  onImportFiles,
+  onOpenFolder,
   onCreateBook,
   onSwitchBook,
   onDeleteBook,
@@ -45,7 +45,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [isSorting, setIsSorting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Handle Node Rename
   const startRename = (e: React.MouseEvent, node: FileNode) => {
@@ -244,22 +243,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={onOpenFolder}
             className="p-1.5 flex justify-center hover:bg-gold-200 dark:hover:bg-white/10 rounded text-gray-500"
             title="Import Folder"
           >
             <Icons.Upload size={16} />
           </button>
         </div>
-        <input
-          type="file"
-          ref={fileInputRef}
-          className="hidden"
-          // @ts-ignore
-          webkitdirectory=""
-          directory=""
-          onChange={(e) => e.target.files && onImportFiles(e.target.files)}
-        />
       </div>
 
       {/* Tree */}
