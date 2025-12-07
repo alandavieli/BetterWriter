@@ -32,7 +32,15 @@ import {
   LogOut,
   HelpCircle,
   Chrome,
-  Globe
+  Globe,
+  Sparkles,
+  PlayCircle,
+  Wand2,
+  Cloud,
+  Heart,
+  Github,
+  Twitter,
+  Instagram
 } from 'lucide-react';
 
 export const Icons = {
@@ -69,5 +77,13 @@ export const Icons = {
   LogOut,
   HelpCircle,
   Chrome,
-  Globe
+  Globe,
+  Sparkles,
+  PlayCircle,
+  Wand2,
+  Cloud,
+  Heart,
+  Github,
+  Twitter,
+  Instagram
 };
