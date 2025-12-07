@@ -363,49 +363,108 @@ const App: React.FC = () => {
 
     const bookId = generateId();
     const rootId = generateId();
+    // First part of the path is the root folder name
     const rootName = e.target.files[0].webkitRelativePath.split('/')[0] || 'Imported Folder';
 
     const map: Record<string, FileNode> = {};
-    const fileIds: string[] = [];
+    const rootChildren: string[] = [];
     let firstFileId: string | null = null;
 
-    // Simple flat map for legacy folder import as recursive reconstruction from FileList is complex
-    // We will create a single root folder and put all files in it for simplicity/robustness
-    for (let i = 0; i < e.target.files.length; i++) {
-      const file = e.target.files[i];
-      if (file.name.endsWith('.txt') || file.name.endsWith('.md')) {
-        const content = await file.text();
-        const fileId = generateId();
-        map[fileId] = {
-          id: fileId,
-          parentId: rootId,
-          title: file.name.replace(/\.(txt|md)$/, ''),
-          type: NodeType.FILE,
-          category: FileCategory.CHAPTER,
-          content,
-          wordCount: content.split(/\s+/).length,
-          lastModified: file.lastModified
-        };
-        fileIds.push(fileId);
-        if (!firstFileId) firstFileId = fileId;
-      }
-    }
+    // Map to track created folders by their relative path "Root/Sub/etc" -> NodeID
+    const pathMap: Record<string, string> = {};
 
-    if (Object.keys(map).length === 0) {
-      alert("No text files found in folder.");
-      return;
-    }
-
-    const rootNode: FileNode = {
+    // Initialize Root
+    pathMap[rootName] = rootId;
+    map[rootId] = {
       id: rootId,
       parentId: null,
       title: rootName,
       type: NodeType.FOLDER,
-      children: fileIds,
+      children: [],
       lastModified: Date.now(),
       isOpen: true
     };
-    map[rootId] = rootNode;
+
+
+    // Helper to ensure a folder exists for a given path array ["Project", "Chapter 1"]
+    const ensurePath = (parts: string[]): string => {
+      let currentPath = parts[0]; // "Project"
+      let parentId = pathMap[currentPath]; // rootId
+
+      // Iterate through the sub-folders
+      for (let i = 1; i < parts.length; i++) {
+        const part = parts[i];
+        const fullPath = currentPath + '/' + part;
+
+        if (!pathMap[fullPath]) {
+          // Create new folder node
+          const newFolderId = generateId();
+          pathMap[fullPath] = newFolderId;
+
+          // Add to map
+          map[newFolderId] = {
+            id: newFolderId,
+            parentId: parentId,
+            title: part,
+            type: NodeType.FOLDER,
+            children: [],
+            lastModified: Date.now(),
+            isOpen: false // Collapsed by default
+          };
+
+          // Add to parent's children
+          if (map[parentId]) {
+            map[parentId] = {
+              ...map[parentId],
+              children: [...(map[parentId].children || []), newFolderId]
+            };
+          }
+        }
+
+        parentId = pathMap[fullPath]; // Step down
+        currentPath = fullPath;
+      }
+
+      return parentId;
+    };
+
+    for (let i = 0; i < e.target.files.length; i++) {
+      const file = e.target.files[i];
+      // Skip dotfiles and non-text
+      if (file.name.startsWith('.') || (!file.name.endsWith('.txt') && !file.name.endsWith('.md'))) continue;
+
+      // Process path: "Project/Chapter 1/file.txt" -> ["Project", "Chapter 1"] + "file.txt"
+      const pathParts = file.webkitRelativePath.split('/');
+      const fileName = pathParts.pop(); // Remove file name
+      if (!fileName) continue;
+
+      // Ensure parent folder exists
+      const parentFolderId = ensurePath(pathParts);
+
+      // Create File Node
+      const content = await file.text();
+      const fileId = generateId();
+      map[fileId] = {
+        id: fileId,
+        parentId: parentFolderId,
+        title: fileName.replace(/\.(txt|md)$/, ''),
+        type: NodeType.FILE,
+        category: FileCategory.CHAPTER,
+        content,
+        wordCount: content.split(/\s+/).length,
+        lastModified: file.lastModified
+      };
+
+      // Link to parent
+      if (map[parentFolderId]) {
+        map[parentFolderId] = {
+          ...map[parentFolderId],
+          children: [...(map[parentFolderId].children || []), fileId]
+        };
+      }
+
+      if (!firstFileId) firstFileId = fileId;
+    }
 
     const newBook: Book = {
       id: bookId,
@@ -419,7 +478,7 @@ const App: React.FC = () => {
       books: [...prev.books, newBook],
       fileMap: { ...prev.fileMap, ...map },
       activeBookId: bookId,
-      activeFileId: firstFileId, // Auto-open first file
+      activeFileId: firstFileId,
       sidebarOpen: true
     }));
 
@@ -725,6 +784,10 @@ const App: React.FC = () => {
                 {lastSaved > Date.now() - 2000 ? "Saved!" : "Save"}
               </Button>
             )}
+
+            <button onClick={() => setState(s => ({ ...s, darkMode: !s.darkMode }))} className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5" title="Toggle Theme">
+              {state.darkMode ? <Icons.Sun size={20} /> : <Icons.Moon size={20} />}
+            </button>
 
             <button onClick={() => setState(s => ({ ...s, focusMode: !s.focusMode }))} className={`p-2 rounded-lg transition-colors ${state.focusMode ? 'bg-gold-500 text-white' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'}`} title="Focus Mode">
               <Icons.Focus size={20} />
