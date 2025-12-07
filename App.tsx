@@ -826,11 +826,18 @@ const App: React.FC = () => {
         </main>
       </div>
 
+      {showHelp && <HelpDialog onClose={() => setShowHelp(false)} />}
+
       {showExport && (
         <ExportDialog
-          onExport={() => alert("Legacy export - Implement new export logic if needed")}
+          isOpen={showExport}
           onClose={() => setShowExport(false)}
-          bookTitle={activeBook?.title || 'Untitled'}
+          onExport={async (config) => {
+            // ... (Simulated export)
+            alert("Export complete!");
+            setShowExport(false);
+          }}
+          bookTitle={activeBook?.title || 'Unknown Project'}
         />
       )}
 
