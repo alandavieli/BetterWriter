@@ -92,7 +92,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(({
           ref={textareaRef}
           value={content || ''}
           onChange={(e) => onChange(e.target.value)}
-          className={`w-full h-full resize-none bg-transparent focus:outline-none text-gray-900 dark:text-cream-100 caret-gold-600 dark:caret-gold-400
+          className={`w-full h-full resize-none bg-transparent focus:outline-none text-gray-900 dark:text-cream-100 caret-gold-600 dark:caret-gold-400 overflow-hidden
             ${focusMode ? 'placeholder-gray-200/20' : 'placeholder-gray-300 dark:placeholder-gray-800'}
           `}
           style={{

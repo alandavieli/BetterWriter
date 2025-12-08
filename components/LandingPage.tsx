@@ -114,14 +114,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
 
                                     {/* Text Paragraphs */}
                                     <div className="space-y-4 w-full">
-                                        <div className={`h-4 bg-gray-200 dark:bg-white/5 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'opacity-10 w-[60%]' : 'opacity-100 w-full'}`} />
-                                        <div className={`h-4 bg-gray-200 dark:bg-white/5 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'opacity-10 w-[80%]' : 'opacity-100 w-[95%]'}`} />
+                                        <div className={`h-4 bg-gray-200 dark:bg-white/5 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'opacity-10 w-[60%] mx-auto' : 'opacity-100 w-full'}`} />
+                                        <div className={`h-4 bg-gray-200 dark:bg-white/5 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'opacity-10 w-[80%] mx-auto' : 'opacity-100 w-[95%]'}`} />
 
                                         {/* Active Line in Focus Mode - Centered & Highlighted */}
                                         <div className={`h-4 bg-gray-800 dark:bg-white/30 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'scale-110 shadow-lg w-[85%] mx-auto' : 'w-[90%]'}`} />
 
-                                        <div className={`h-4 bg-gray-200 dark:bg-white/5 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'opacity-10 w-[70%]' : 'opacity-100 w-[85%]'}`} />
-                                        <div className={`h-4 bg-gray-200 dark:bg-white/5 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'opacity-10 w-[50%]' : 'opacity-100 w-[88%]'}`} />
+                                        <div className={`h-4 bg-gray-200 dark:bg-white/5 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'opacity-10 w-[70%] mx-auto' : 'opacity-100 w-[85%]'}`} />
+                                        <div className={`h-4 bg-gray-200 dark:bg-white/5 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'opacity-10 w-[50%] mx-auto' : 'opacity-100 w-[88%]'}`} />
                                     </div>
 
                                     {/* Focus Mode Label Overlay */}
@@ -206,8 +206,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
                         <div className="relative group">
                             <div className="text-9xl font-serif font-bold text-gold-100 dark:text-white/5 absolute -top-10 -left-6 z-0 select-none transition-colors group-hover:text-gold-200 dark:group-hover:text-white/10">2</div>
                             <div className="relative z-10">
-                                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 group-hover:text-gold-600 transition-colors">Organize with AI</h3>
-                                <p className="text-gray-500 dark:text-gray-400 leading-relaxed">Let our intelligent assistant suggest folder structures and sort your scattered notes into logical chapters.</p>
+                                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 group-hover:text-gold-600 transition-colors">Intuitive Organization</h3>
+                                <p className="text-gray-500 dark:text-gray-400 leading-relaxed">Keep your work structured with our flexible file system. Drag, drop, and nest folders to match your thought process.</p>
                             </div>
                         </div>
                         {/* Step 3 */}
