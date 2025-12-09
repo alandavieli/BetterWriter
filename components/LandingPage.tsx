@@ -108,20 +108,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
 
                             {/* Mockup Content */}
                             <div className="flex-1 p-8 md:p-12 bg-white dark:bg-neutral-800 flex flex-col relative transition-all duration-700 ease-in-out">
-                                <div className={`max-w-2xl w-full mx-auto transition-all duration-700 ease-in-out flex flex-col ${demoFocusMode ? 'items-center' : 'items-start'}`}>
+                                <div className={`max-w-2xl w-full mx-auto transition-all duration-1000 ease-in-out flex flex-col`}>
                                     {/* Title */}
-                                    <div className={`h-8 w-3/4 bg-gray-200 dark:bg-white/10 rounded mb-6 transition-all duration-700 ease-in-out ${demoFocusMode ? 'scale-110 mb-10' : ''}`} />
+                                    <div className={`h-8 w-3/4 bg-gray-200 dark:bg-white/10 rounded mb-6 transition-all duration-1000 ease-in-out ${demoFocusMode ? 'scale-110 mb-10 ml-[12.5%]' : 'ml-0'}`} />
 
                                     {/* Text Paragraphs */}
                                     <div className="space-y-4 w-full">
-                                        <div className={`h-4 bg-gray-200 dark:bg-white/5 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'opacity-10 w-[60%] mx-auto' : 'opacity-100 w-full'}`} />
-                                        <div className={`h-4 bg-gray-200 dark:bg-white/5 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'opacity-10 w-[80%] mx-auto' : 'opacity-100 w-[95%]'}`} />
+                                        <div className={`h-4 bg-gray-200 dark:bg-white/5 rounded transition-all duration-1000 ease-in-out ${demoFocusMode ? 'opacity-10 w-[60%] ml-[20%]' : 'opacity-100 w-full ml-0'}`} />
+                                        <div className={`h-4 bg-gray-200 dark:bg-white/5 rounded transition-all duration-1000 ease-in-out ${demoFocusMode ? 'opacity-10 w-[80%] ml-[10%]' : 'opacity-100 w-[95%] ml-0'}`} />
 
                                         {/* Active Line in Focus Mode - Centered & Highlighted */}
-                                        <div className={`h-4 bg-gray-800 dark:bg-white/30 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'scale-110 shadow-lg w-[85%] mx-auto' : 'w-[90%]'}`} />
+                                        <div className={`h-4 bg-gray-800 dark:bg-white/30 rounded transition-all duration-1000 ease-in-out ${demoFocusMode ? 'scale-110 shadow-lg w-[85%] ml-[7.5%]' : 'w-[90%] ml-0'}`} />
 
-                                        <div className={`h-4 bg-gray-200 dark:bg-white/5 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'opacity-10 w-[70%] mx-auto' : 'opacity-100 w-[85%]'}`} />
-                                        <div className={`h-4 bg-gray-200 dark:bg-white/5 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'opacity-10 w-[50%] mx-auto' : 'opacity-100 w-[88%]'}`} />
+                                        <div className={`h-4 bg-gray-200 dark:bg-white/5 rounded transition-all duration-1000 ease-in-out ${demoFocusMode ? 'opacity-10 w-[70%] ml-[15%]' : 'opacity-100 w-[85%] ml-0'}`} />
+                                        <div className={`h-4 bg-gray-200 dark:bg-white/5 rounded transition-all duration-1000 ease-in-out ${demoFocusMode ? 'opacity-10 w-[50%] ml-[25%]' : 'opacity-100 w-[88%] ml-0'}`} />
                                     </div>
 
                                     {/* Focus Mode Label Overlay */}
