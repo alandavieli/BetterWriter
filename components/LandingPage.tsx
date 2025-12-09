@@ -108,7 +108,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
 
                             {/* Mockup Content */}
                             <div className="flex-1 p-8 md:p-12 bg-white dark:bg-neutral-800 flex flex-col relative transition-all duration-700 ease-in-out">
-                                <div className={`max-w-2xl w-full mx-auto transition-all duration-1000 ease-in-out flex flex-col`}>
+                                <div className={`max-w-2xl w-full mx-auto transition-all duration-1000 ease-in-out flex flex-col ${demoFocusMode ? 'mt-16' : ''}`}>
                                     {/* Title */}
                                     <div className={`h-8 w-3/4 bg-gray-200 dark:bg-white/10 rounded mb-6 transition-all duration-1000 ease-in-out ${demoFocusMode ? 'scale-110 mb-10 ml-[12.5%]' : 'ml-0'}`} />
 
