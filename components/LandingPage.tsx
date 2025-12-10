@@ -64,7 +64,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
                 <div className="relative z-10 max-w-4xl mx-auto">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white dark:bg-white/5 border border-gold-200 dark:border-white/10 text-gold-700 dark:text-gold-400 text-xs font-bold uppercase tracking-wider mb-8 shadow-sm">
                         <Icons.Sparkles size={14} />
-                        <span>AI-Powered Editor 2.0</span>
+                        <span>Free, forever.</span>
                     </div>
 
                     <h1 className="text-6xl md:text-8xl font-serif font-bold text-gray-900 dark:text-white mb-8 leading-[1.05] tracking-tight">
@@ -73,7 +73,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
                     </h1>
 
                     <p className="text-xl md:text-2xl text-gray-500 dark:text-gray-400 max-w-2xl mx-auto mb-12 leading-relaxed font-light">
-                        An elegant, distraction-free writing environment. Free, forever.
+                        An elegant, distraction-free writing environment.
                     </p>
 
                     <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -107,18 +107,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
                             </div>
 
                             {/* Mockup Content */}
-                            <div className={`flex-1 p-8 md:p-12 bg-white dark:bg-neutral-800 flex flex-col relative transition-all duration-700 ease-in-out ${demoFocusMode ? 'justify-center' : ''}`}>
+                            <div className="flex-1 p-8 md:p-12 bg-white dark:bg-neutral-800 flex flex-col relative transition-all duration-700 ease-in-out">
                                 <div className={`max-w-2xl w-full mx-auto transition-all duration-700 ease-in-out flex flex-col ${demoFocusMode ? 'items-center' : 'items-start'}`}>
                                     {/* Title */}
                                     <div className={`h-8 w-3/4 bg-gray-200 dark:bg-white/10 rounded mb-6 transition-all duration-700 ease-in-out ${demoFocusMode ? 'scale-110 mb-10' : ''}`} />
 
                                     {/* Text Paragraphs */}
-                                    <div className={`gap-4 w-full flex flex-col transition-all duration-700 ease-in-out ${demoFocusMode ? 'items-center' : 'items-start'}`}>
+                                    <div className="space-y-4 w-full">
                                         <div className={`h-4 bg-gray-200 dark:bg-white/5 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'opacity-10 w-[60%]' : 'opacity-100 w-full'}`} />
                                         <div className={`h-4 bg-gray-200 dark:bg-white/5 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'opacity-10 w-[80%]' : 'opacity-100 w-[95%]'}`} />
 
                                         {/* Active Line in Focus Mode - Centered & Highlighted */}
-                                        <div className={`h-4 bg-gray-800 dark:bg-white/30 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'scale-110 shadow-lg w-[85%]' : 'w-[90%]'}`} />
+                                        <div className={`h-4 bg-gray-800 dark:bg-white/30 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'scale-110 shadow-lg w-[85%] mx-auto' : 'w-[90%]'}`} />
 
                                         <div className={`h-4 bg-gray-200 dark:bg-white/5 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'opacity-10 w-[70%]' : 'opacity-100 w-[85%]'}`} />
                                         <div className={`h-4 bg-gray-200 dark:bg-white/5 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'opacity-10 w-[50%]' : 'opacity-100 w-[88%]'}`} />
