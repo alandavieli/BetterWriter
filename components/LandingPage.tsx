@@ -274,6 +274,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
                             Built for authors, by authors. The only writing tool you'll ever need.
                         </p>
                     </div>
+
+                    <div className="text-gray-400 text-sm font-medium">
+                        Developed by <span className="text-gold-600 dark:text-gold-500">Advancyst</span>
+                    </div>
+
                     <div className="flex gap-8">
                         <a href="#" className="text-gray-500 hover:text-gold-600 transition-colors"><Icons.Github size={24} /></a>
                         <a href="#" className="text-gray-500 hover:text-gold-600 transition-colors"><Icons.Twitter size={24} /></a>

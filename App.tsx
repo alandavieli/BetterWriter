@@ -72,6 +72,28 @@ const App: React.FC = () => {
     }
   }, [state.darkMode]);
 
+  // Activity Monitor (Mouse move only for focus mode)
+  useEffect(() => {
+    const handleActivity = () => {
+      setUserActivity(true);
+      if (activityTimeoutRef.current) clearTimeout(activityTimeoutRef.current);
+      activityTimeoutRef.current = setTimeout(() => {
+        setUserActivity(false);
+      }, 3000);
+    };
+
+    // Only track mouse movement, not keydown
+    window.addEventListener('mousemove', handleActivity);
+
+    // Initial trigger
+    handleActivity();
+
+    return () => {
+      window.removeEventListener('mousemove', handleActivity);
+      if (activityTimeoutRef.current) clearTimeout(activityTimeoutRef.current);
+    };
+  }, []);
+
   // ... (existing helper effects) ...
 
   const verifyPermission = async (fileHandle: FileSystemFileHandle, readWrite: boolean) => {

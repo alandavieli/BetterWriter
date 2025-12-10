@@ -66,7 +66,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(({
 
   return (
     <div className={`flex flex-col mx-auto px-4 md:px-12 py-8 min-h-[calc(100vh-4rem)] transition-all duration-700 ease-in-out
-      ${focusMode ? 'max-w-4xl mt-12' : 'max-w-5xl'}
+      ${focusMode ? 'max-w-6xl mt-12' : 'max-w-5xl'}
     `}>
       {/* Title Input - Textarea for wrapping */}
       <textarea
