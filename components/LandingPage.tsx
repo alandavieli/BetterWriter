@@ -113,12 +113,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
                                     <div className={`h-8 w-3/4 bg-gray-200 dark:bg-white/10 rounded mb-6 transition-all duration-700 ease-in-out ${demoFocusMode ? 'scale-110 mb-10' : ''}`} />
 
                                     {/* Text Paragraphs */}
-                                    <div className={`space-y-4 w-full flex flex-col transition-all duration-700 ease-in-out ${demoFocusMode ? 'items-center' : 'items-start'}`}>
+                                    <div className={`gap-4 w-full flex flex-col transition-all duration-700 ease-in-out ${demoFocusMode ? 'items-center' : 'items-start'}`}>
                                         <div className={`h-4 bg-gray-200 dark:bg-white/5 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'opacity-10 w-[60%]' : 'opacity-100 w-full'}`} />
                                         <div className={`h-4 bg-gray-200 dark:bg-white/5 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'opacity-10 w-[80%]' : 'opacity-100 w-[95%]'}`} />
 
                                         {/* Active Line in Focus Mode - Centered & Highlighted */}
-                                        <div className={`h-4 bg-gray-800 dark:bg-white/30 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'scale-110 shadow-lg w-[85%] mx-auto' : 'w-[90%]'}`} />
+                                        <div className={`h-4 bg-gray-800 dark:bg-white/30 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'scale-110 shadow-lg w-[85%]' : 'w-[90%]'}`} />
 
                                         <div className={`h-4 bg-gray-200 dark:bg-white/5 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'opacity-10 w-[70%]' : 'opacity-100 w-[85%]'}`} />
                                         <div className={`h-4 bg-gray-200 dark:bg-white/5 rounded transition-all duration-700 ease-in-out ${demoFocusMode ? 'opacity-10 w-[50%]' : 'opacity-100 w-[88%]'}`} />
