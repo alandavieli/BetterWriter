@@ -35,6 +35,7 @@ export interface FileNode {
   lastModified: number;
   isOpen?: boolean; // For folders
   fileHandle?: FileSystemFileHandle; // Handle for File System Access API
+  tags?: string[];
 }
 
 export interface Book {
@@ -81,4 +82,18 @@ export interface DashboardStats {
     estimatedCompletion: string;
     tone: string;
   }[];
+}
+
+export interface WritingStats {
+  dailyGoal: number; // Words per day
+  weeklyGoal: number; // Words per week
+  currentStreak: number; // Days in a row
+  longestStreak: number; // Best streak ever
+  totalTimeMinutes: number; // Total time spent writing
+  dailyHistory: {
+    date: string; // YYYY-MM-DD
+    wordCount: number;
+    timeMinutes: number;
+  }[];
+  lastWriteDate: string; // YYYY-MM-DD
 }

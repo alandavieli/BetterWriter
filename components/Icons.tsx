@@ -40,7 +40,10 @@ import {
   Heart,
   Github,
   Twitter,
-  Instagram
+  Instagram,
+  GripVertical,
+  Tag,
+  ChevronUp
 } from 'lucide-react';
 
 export const Icons = {
@@ -85,5 +88,8 @@ export const Icons = {
   Heart,
   Github,
   Twitter,
-  Instagram
+  Instagram,
+  GripVertical,
+  Tag,
+  ChevronUp
 };

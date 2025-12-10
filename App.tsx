@@ -3,11 +3,12 @@ import { Icons } from './components/Icons';
 import { Button } from './components/Button';
 import { LandingPage } from './components/LandingPage';
 import { Editor, EditorHandle } from './components/Editor';
-import { Sidebar } from './components/Sidebar';
+import { Sidebar } from './components/SidebarNew';
 import { ExportDialog } from './components/ExportDialog';
 import { StatsPage } from './components/StatsPage';
 import { HelpDialog } from './components/HelpDialog';
-import { AppState, FileNode, NodeType, FileCategory, ViewMode, Book, ExportConfig } from './types';
+import { PlanningPanel } from './components/PlanningPanel';
+import { AppState, FileNode, NodeType, FileCategory, ViewMode, Book, ExportConfig, WritingStats } from './types';
 
 // Utility for ID generation
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -58,6 +59,27 @@ const App: React.FC = () => {
   const [lastSaved, setLastSaved] = useState<number>(0);
   const [showExport, setShowExport] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showPlanning, setShowPlanning] = useState(false);
+
+  // --- Writing Stats State ---
+  const getInitialStats = (): WritingStats => {
+    const saved = localStorage.getItem('better-writer-stats');
+    if (saved) return JSON.parse(saved);
+    return {
+      dailyGoal: 1000,
+      weeklyGoal: 7000,
+      currentStreak: 0,
+      longestStreak: 0,
+      totalTimeMinutes: 0,
+      dailyHistory: [],
+      lastWriteDate: ''
+    };
+  };
+
+  const [stats, setStats] = useState<WritingStats>(getInitialStats);
+  const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
+  const [sessionWordCount, setSessionWordCount] = useState(0);
+  const sessionTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const activityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorRef = useRef<EditorHandle>(null);
@@ -93,6 +115,105 @@ const App: React.FC = () => {
       if (activityTimeoutRef.current) clearTimeout(activityTimeoutRef.current);
     };
   }, []);
+
+  // --- Stats Persistence ---
+  useEffect(() => {
+    localStorage.setItem('better-writer-stats', JSON.stringify(stats));
+  }, [stats]);
+
+  // --- Session Time Tracking ---
+  useEffect(() => {
+    if (state.activeFileId && state.view === ViewMode.EDITOR) {
+      // Start session timer
+      if (!sessionStartTime) {
+        setSessionStartTime(Date.now());
+      }
+
+      // Update time every minute
+      sessionTimerRef.current = setInterval(() => {
+        setStats(prev => ({
+          ...prev,
+          totalTimeMinutes: prev.totalTimeMinutes + 1
+        }));
+      }, 60000); // Every minute
+
+      return () => {
+        if (sessionTimerRef.current) {
+          clearInterval(sessionTimerRef.current);
+        }
+      };
+    } else {
+      // Reset session when leaving editor
+      setSessionStartTime(null);
+      if (sessionTimerRef.current) {
+        clearInterval(sessionTimerRef.current);
+      }
+    }
+  }, [state.activeFileId, state.view, sessionStartTime]);
+
+  // --- Update Stats When Words Change ---
+  const updateDailyStats = (wordCount: number) => {
+    const today = new Date().toISOString().split('T')[0];
+
+    setStats(prev => {
+      const history = [...prev.dailyHistory];
+      const todayIndex = history.findIndex(d => d.date === today);
+
+      if (todayIndex >= 0) {
+        history[todayIndex] = {
+          ...history[todayIndex],
+          wordCount: wordCount
+        };
+      } else {
+        history.push({
+          date: today,
+          wordCount: wordCount,
+          timeMinutes: 0
+        });
+      }
+
+      // Calculate streak
+      let currentStreak = 0;
+      let longestStreak = prev.longestStreak;
+
+      if (history.length > 0) {
+        const sortedHistory = [...history].sort((a, b) => b.date.localeCompare(a.date));
+
+        // Check if we wrote today or yesterday
+        const lastDate = new Date(sortedHistory[0].date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const daysDiff = Math.floor((today.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (daysDiff <= 1) {
+          // Continue or start streak
+          currentStreak = 1;
+          for (let i = 1; i < sortedHistory.length; i++) {
+            const currentDate = new Date(sortedHistory[i - 1].date);
+            const prevDate = new Date(sortedHistory[i].date);
+            const diff = Math.floor((currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
+
+            if (diff === 1 && sortedHistory[i].wordCount > 0) {
+              currentStreak++;
+            } else {
+              break;
+            }
+          }
+        }
+
+        longestStreak = Math.max(longestStreak, currentStreak);
+      }
+
+      return {
+        ...prev,
+        dailyHistory: history,
+        currentStreak,
+        longestStreak,
+        lastWriteDate: today
+      };
+    });
+  };
 
   // ... (existing helper effects) ...
 
@@ -694,7 +815,59 @@ const App: React.FC = () => {
       books: prev.books.filter(b => b.id !== id),
       activeBookId: prev.activeBookId === id ? (prev.books[0]?.id || null) : prev.activeBookId
     }));
-  }
+  };
+
+  const handleReorganize = (sourceId: string, targetParentId: string) => {
+    setState(prev => {
+      const sourceNode = prev.fileMap[sourceId];
+      if (!sourceNode) return prev;
+
+      const oldParentId = sourceNode.parentId;
+      if (!oldParentId || oldParentId === targetParentId) return prev;
+
+      const newMap = { ...prev.fileMap };
+
+      // Remove from old parent
+      const oldParent = newMap[oldParentId];
+      if (oldParent) {
+        newMap[oldParentId] = {
+          ...oldParent,
+          children: oldParent.children?.filter(c => c !== sourceId) || []
+        };
+      }
+
+      // Add to new parent
+      const newParent = newMap[targetParentId];
+      if (newParent) {
+        newMap[targetParentId] = {
+          ...newParent,
+          children: [...(newParent.children || []), sourceId],
+          isOpen: true
+        };
+      }
+
+      // Update source node's parentId
+      newMap[sourceId] = {
+        ...sourceNode,
+        parentId: targetParentId
+      };
+
+      return { ...prev, fileMap: newMap };
+    });
+  };
+
+  const handleUpdateTags = (id: string, tags: string[]) => {
+    setState(prev => ({
+      ...prev,
+      fileMap: {
+        ...prev.fileMap,
+        [id]: {
+          ...prev.fileMap[id],
+          tags
+        }
+      }
+    }));
+  };
 
   // --- Render ---
 
@@ -723,7 +896,18 @@ const App: React.FC = () => {
             <Icons.X size={24} /> Close
           </Button>
         </div>
-        <StatsPage books={state.books} fileMap={state.fileMap} />
+        <StatsPage
+          books={state.books}
+          fileMap={state.fileMap}
+          stats={stats}
+          onUpdateGoals={(daily, weekly) => {
+            setStats(prev => ({
+              ...prev,
+              dailyGoal: daily,
+              weeklyGoal: weekly
+            }));
+          }}
+        />
       </div>
     );
   }
@@ -748,12 +932,13 @@ const App: React.FC = () => {
         onSelectFile={(id) => setState(s => ({ ...s, activeFileId: id }))}
         onToggleFolder={(id) => setState(s => ({ ...s, fileMap: { ...s.fileMap, [id]: { ...s.fileMap[id], isOpen: !s.fileMap[id].isOpen } } }))}
         onRenameNode={(id, title) => setState(s => ({ ...s, fileMap: { ...s.fileMap, [id]: { ...s.fileMap[id], title } } }))}
-        onReorganize={() => { }} // simplified
+        onReorganize={handleReorganize}
         onOpenFolder={handleOpenFolder}
         onCreateBook={handleCreateBook}
         onSwitchBook={(id) => setState(s => ({ ...s, activeBookId: id }))}
         onDeleteBook={handleDeleteBook}
         onRenameBook={(id, title) => setState(s => ({ ...s, books: s.books.map(b => b.id === id ? { ...b, title } : b) }))}
+        onUpdateTags={handleUpdateTags}
       />
 
       <div className={`flex-1 flex flex-col relative min-w-0 bg-white dark:bg-neutral-800 transition-all duration-300 ${showSidebar ? 'pl-72' : ''}`}>
@@ -778,6 +963,9 @@ const App: React.FC = () => {
                 </Button>
                 <Button onClick={() => setState(s => ({ ...s, view: ViewMode.STATS }))} variant="ghost" size="sm" className="hidden md:flex text-gray-500 hover:text-gold-600">
                   <Icons.BarChart2 className="mr-2" size={16} /> Stats
+                </Button>
+                <Button onClick={() => setShowPlanning(true)} variant="ghost" size="sm" className="hidden md:flex text-gray-500 hover:text-gold-600">
+                  <Icons.Layout className="mr-2" size={16} /> Planning
                 </Button>
               </div>
             )}
@@ -824,7 +1012,22 @@ const App: React.FC = () => {
             <Editor
               ref={editorRef}
               content={activeFile.content || ''}
-              onChange={(c) => setState(s => ({ ...s, fileMap: { ...s.fileMap, [activeFile.id]: { ...s.fileMap[activeFile.id], content: c, wordCount: c.split(/\s+/).length, lastModified: Date.now() } } }))}
+              onChange={(c) => {
+                const newWordCount = c.split(/\s+/).filter(w => w.length > 0).length;
+                setState(s => ({
+                  ...s,
+                  fileMap: {
+                    ...s.fileMap,
+                    [activeFile.id]: {
+                      ...s.fileMap[activeFile.id],
+                      content: c,
+                      wordCount: newWordCount,
+                      lastModified: Date.now()
+                    }
+                  }
+                }));
+                updateDailyStats(newWordCount);
+              }}
               title={activeFile.title}
               onTitleChange={(t) => setState(s => ({ ...s, fileMap: { ...s.fileMap, [activeFile.id]: { ...s.fileMap[activeFile.id], title: t } } }))}
               focusMode={state.focusMode}
@@ -858,6 +1061,13 @@ const App: React.FC = () => {
       </div>
 
       {showHelp && <HelpDialog onClose={() => setShowHelp(false)} />}
+
+      {showPlanning && (
+        <PlanningPanel
+          fileMap={state.fileMap}
+          onClose={() => setShowPlanning(false)}
+        />
+      )}
 
       {showExport && (
         <ExportDialog
