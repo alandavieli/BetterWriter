@@ -7,6 +7,7 @@ import { Sidebar } from './components/SidebarNew';
 import { ExportDialog } from './components/ExportDialog';
 import { StatsPage } from './components/StatsPage';
 import { HelpDialog } from './components/HelpDialog';
+import { TutorialDialog } from './components/TutorialDialog';
 import { PlanningPanel } from './components/PlanningPanel';
 import { FindReplace } from './components/FindReplace';
 import { AppState, FileNode, NodeType, FileCategory, ViewMode, Book, ExportConfig, WritingStats } from './types';
@@ -60,6 +61,7 @@ const App: React.FC = () => {
   const [lastSaved, setLastSaved] = useState<number>(0);
   const [showExport, setShowExport] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
   const [showPlanning, setShowPlanning] = useState(false);
   const [showFindReplace, setShowFindReplace] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -97,27 +99,34 @@ const App: React.FC = () => {
     }
   }, [state.darkMode]);
 
-  // Activity Monitor (Mouse move only for focus mode)
+  // Activity Monitor (Mouse position tracking for focus mode navbar)
   useEffect(() => {
-    const handleActivity = () => {
-      setUserActivity(true);
-      if (activityTimeoutRef.current) clearTimeout(activityTimeoutRef.current);
-      activityTimeoutRef.current = setTimeout(() => {
-        setUserActivity(false);
-      }, 3000);
+    const handleActivity = (e: MouseEvent) => {
+      // In focus mode, only show navbar if mouse is in top 80px of screen
+      if (state.focusMode) {
+        const isAtTop = e.clientY < 80;
+        setUserActivity(isAtTop);
+      } else {
+        // In normal mode, always show navbar on mouse movement
+        setUserActivity(true);
+        if (activityTimeoutRef.current) clearTimeout(activityTimeoutRef.current);
+        activityTimeoutRef.current = setTimeout(() => {
+          setUserActivity(false);
+        }, 3000);
+      }
     };
 
     // Only track mouse movement, not keydown
     window.addEventListener('mousemove', handleActivity);
 
-    // Initial trigger
-    handleActivity();
+    // Initial trigger - set to false in focus mode, true otherwise
+    setUserActivity(!state.focusMode);
 
     return () => {
       window.removeEventListener('mousemove', handleActivity);
       if (activityTimeoutRef.current) clearTimeout(activityTimeoutRef.current);
     };
-  }, []);
+  }, [state.focusMode]);
 
   // --- Stats Persistence ---
   useEffect(() => {
@@ -1005,6 +1014,160 @@ const App: React.FC = () => {
                     <span className="italic font-serif text-sm">I</span>
                   </button>
                   <button
+                    onClick={() => {
+                      const ta = editorRef.current?.getTextarea();
+                      if (!ta) return;
+                      const start = ta.selectionStart;
+                      const lines = (activeFile.content || '').substring(0, start).split('\n');
+                      const lineStart = start - lines[lines.length - 1].length;
+                      const lineEnd = (activeFile.content || '').indexOf('\n', start);
+                      const actualLineEnd = lineEnd === -1 ? (activeFile.content || '').length : lineEnd;
+                      const line = (activeFile.content || '').substring(lineStart, actualLineEnd);
+                      const before = (activeFile.content || '').substring(0, lineStart);
+                      const after = (activeFile.content || '').substring(actualLineEnd);
+                      const newContent = before + '# ' + line + after;
+                      setState(s => ({ ...s, fileMap: { ...s.fileMap, [activeFile.id]: { ...s.fileMap[activeFile.id], content: newContent } } }));
+                    }}
+                    className="p-2 rounded hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-gray-400 hover:text-gold-600"
+                    title="Header 1"
+                  >
+                    <span className="font-bold text-sm">H1</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const ta = editorRef.current?.getTextarea();
+                      if (!ta) return;
+                      const start = ta.selectionStart;
+                      const lines = (activeFile.content || '').substring(0, start).split('\n');
+                      const lineStart = start - lines[lines.length - 1].length;
+                      const lineEnd = (activeFile.content || '').indexOf('\n', start);
+                      const actualLineEnd = lineEnd === -1 ? (activeFile.content || '').length : lineEnd;
+                      const line = (activeFile.content || '').substring(lineStart, actualLineEnd);
+                      const before = (activeFile.content || '').substring(0, lineStart);
+                      const after = (activeFile.content || '').substring(actualLineEnd);
+                      const newContent = before + '## ' + line + after;
+                      setState(s => ({ ...s, fileMap: { ...s.fileMap, [activeFile.id]: { ...s.fileMap[activeFile.id], content: newContent } } }));
+                    }}
+                    className="p-2 rounded hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-gray-400 hover:text-gold-600"
+                    title="Header 2"
+                  >
+                    <span className="font-bold text-sm">H2</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const ta = editorRef.current?.getTextarea();
+                      if (!ta) return;
+                      const start = ta.selectionStart;
+                      const lines = (activeFile.content || '').substring(0, start).split('\n');
+                      const lineStart = start - lines[lines.length - 1].length;
+                      const lineEnd = (activeFile.content || '').indexOf('\n', start);
+                      const actualLineEnd = lineEnd === -1 ? (activeFile.content || '').length : lineEnd;
+                      const line = (activeFile.content || '').substring(lineStart, actualLineEnd);
+                      const before = (activeFile.content || '').substring(0, lineStart);
+                      const after = (activeFile.content || '').substring(actualLineEnd);
+                      const newContent = before + '### ' + line + after;
+                      setState(s => ({ ...s, fileMap: { ...s.fileMap, [activeFile.id]: { ...s.fileMap[activeFile.id], content: newContent } } }));
+                    }}
+                    className="p-2 rounded hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-gray-400 hover:text-gold-600"
+                    title="Header 3"
+                  >
+                    <span className="font-bold text-sm">H3</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const ta = editorRef.current?.getTextarea();
+                      if (!ta) return;
+                      const start = ta.selectionStart;
+                      const end = ta.selectionEnd;
+                      const selectedText = activeFile.content?.substring(start, end) || '';
+                      const before = activeFile.content?.substring(0, start) || '';
+                      const after = activeFile.content?.substring(end) || '';
+                      const newContent = before + '~~' + selectedText + '~~' + after;
+                      setState(s => ({ ...s, fileMap: { ...s.fileMap, [activeFile.id]: { ...s.fileMap[activeFile.id], content: newContent } } }));
+                      setTimeout(() => ta.setSelectionRange(start + 2, end + 2), 0);
+                    }}
+                    className="p-2 rounded hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-gray-400 hover:text-gold-600"
+                    title="Strikethrough"
+                  >
+                    <span className="text-sm line-through">S</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const ta = editorRef.current?.getTextarea();
+                      if (!ta) return;
+                      const start = ta.selectionStart;
+                      const end = ta.selectionEnd;
+                      const selectedText = activeFile.content?.substring(start, end) || '';
+                      const before = activeFile.content?.substring(0, start) || '';
+                      const after = activeFile.content?.substring(end) || '';
+                      const newContent = before + '`' + selectedText + '`' + after;
+                      setState(s => ({ ...s, fileMap: { ...s.fileMap, [activeFile.id]: { ...s.fileMap[activeFile.id], content: newContent } } }));
+                      setTimeout(() => ta.setSelectionRange(start + 1, end + 1), 0);
+                    }}
+                    className="p-2 rounded hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-gray-400 hover:text-gold-600"
+                    title="Inline Code"
+                  >
+                    <span className="text-sm font-mono">{`</>`}</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const ta = editorRef.current?.getTextarea();
+                      if (!ta) return;
+                      const start = ta.selectionStart;
+                      const lines = (activeFile.content || '').substring(0, start).split('\n');
+                      const lineStart = start - lines[lines.length - 1].length;
+                      const lineEnd = (activeFile.content || '').indexOf('\n', start);
+                      const actualLineEnd = lineEnd === -1 ? (activeFile.content || '').length : lineEnd;
+                      const line = (activeFile.content || '').substring(lineStart, actualLineEnd);
+                      const before = (activeFile.content || '').substring(0, lineStart);
+                      const after = (activeFile.content || '').substring(actualLineEnd);
+                      const newContent = before + '> ' + line + after;
+                      setState(s => ({ ...s, fileMap: { ...s.fileMap, [activeFile.id]: { ...s.fileMap[activeFile.id], content: newContent } } }));
+                    }}
+                    className="p-2 rounded hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-gray-400 hover:text-gold-600"
+                    title="Blockquote"
+                  >
+                    <span className="text-sm font-bold">"</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const ta = editorRef.current?.getTextarea();
+                      if (!ta) return;
+                      const start = ta.selectionStart;
+                      const lines = (activeFile.content || '').substring(0, start).split('\n');
+                      const lineStart = start - lines[lines.length - 1].length;
+                      const lineEnd = (activeFile.content || '').indexOf('\n', start);
+                      const actualLineEnd = lineEnd === -1 ? (activeFile.content || '').length : lineEnd;
+                      const line = (activeFile.content || '').substring(lineStart, actualLineEnd);
+                      const before = (activeFile.content || '').substring(0, lineStart);
+                      const after = (activeFile.content || '').substring(actualLineEnd);
+                      const newContent = before + '- ' + line + after;
+                      setState(s => ({ ...s, fileMap: { ...s.fileMap, [activeFile.id]: { ...s.fileMap[activeFile.id], content: newContent } } }));
+                    }}
+                    className="p-2 rounded hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-gray-400 hover:text-gold-600"
+                    title="Unordered List"
+                  >
+                    <Icons.List size={16} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      const ta = editorRef.current?.getTextarea();
+                      if (!ta) return;
+                      const start = ta.selectionStart;
+                      const end = ta.selectionEnd;
+                      const selectedText = activeFile.content?.substring(start, end) || 'link text';
+                      const before = activeFile.content?.substring(0, start) || '';
+                      const after = activeFile.content?.substring(end) || '';
+                      const newContent = before + '[' + selectedText + '](url)' + after;
+                      setState(s => ({ ...s, fileMap: { ...s.fileMap, [activeFile.id]: { ...s.fileMap[activeFile.id], content: newContent } } }));
+                      setTimeout(() => ta.setSelectionRange(start + selectedText.length + 3, start + selectedText.length + 6), 0);
+                    }}
+                    className="p-2 rounded hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-gray-400 hover:text-gold-600"
+                    title="Link"
+                  >
+                    <Icons.Link size={16} />
+                  </button>
+                  <button
                     onClick={() => setShowFindReplace(!showFindReplace)}
                     className="p-2 rounded hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-gray-400 hover:text-gold-600 flex items-center gap-1"
                     title="Find & Replace (Ctrl+F)"
@@ -1017,7 +1180,7 @@ const App: React.FC = () => {
                 <div className="relative mr-2">
                   <button
                     onClick={() => setShowExportMenu(!showExportMenu)}
-                    className="px-3 py-1.5 rounded bg-gold-500 hover:bg-gold-600 text-white flex items-center gap-2 text-sm font-medium"
+                    className="px-3 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-gray-400 hover:text-gold-600 flex items-center gap-2 text-sm font-medium"
                   >
                     <Icons.Download size={14} />
                     Export
@@ -1096,6 +1259,10 @@ const App: React.FC = () => {
               </Button>
             )}
 
+            <button onClick={() => setShowTutorial(true)} className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5" title="Tutorial">
+              <Icons.BookOpen size={20} />
+            </button>
+
             <button onClick={() => setShowHelp(true)} className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5" title="Browser Info">
               <Icons.HelpCircle size={20} />
             </button>
@@ -1104,8 +1271,9 @@ const App: React.FC = () => {
               {state.darkMode ? <Icons.Sun size={20} /> : <Icons.Moon size={20} />}
             </button>
 
-            <button onClick={() => setState(s => ({ ...s, focusMode: !s.focusMode }))} className={`p-2 rounded-lg transition-colors ${state.focusMode ? 'bg-gold-500 text-white' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'}`} title="Focus Mode">
-              <Icons.Focus size={20} />
+            <button onClick={() => setState(s => ({ ...s, focusMode: !s.focusMode }))} className={`px-3 py-2 rounded-lg transition-all flex items-center gap-2 ${state.focusMode ? 'bg-gold-500 text-white shadow-md' : 'bg-gray-100 dark:bg-neutral-700 text-gray-600 dark:text-gray-400 hover:bg-gold-100 dark:hover:bg-gold-900/20'}`} title="Focus Mode">
+              <Icons.Focus size={18} />
+              <span className="text-sm font-medium hidden md:inline">Zen Focus Mode</span>
             </button>
 
             {!state.focusMode && (
@@ -1179,6 +1347,7 @@ const App: React.FC = () => {
               onTitleChange={(t) => setState(s => ({ ...s, fileMap: { ...s.fileMap, [activeFile.id]: { ...s.fileMap[activeFile.id], title: t } } }))}
               focusMode={state.focusMode}
               active={userActivity}
+              sidebarOpen={state.sidebarOpen}
             />
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-8 animate-in fade-in">
@@ -1208,6 +1377,8 @@ const App: React.FC = () => {
       </div>
 
       {showHelp && <HelpDialog onClose={() => setShowHelp(false)} />}
+
+      {showTutorial && <TutorialDialog onClose={() => setShowTutorial(false)} />}
 
       {showPlanning && (
         <PlanningPanel

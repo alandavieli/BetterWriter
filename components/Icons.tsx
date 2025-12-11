@@ -43,7 +43,9 @@ import {
   Instagram,
   GripVertical,
   Tag,
-  ChevronUp
+  ChevronUp,
+  List,
+  Link
 } from 'lucide-react';
 
 export const Icons = {
@@ -71,6 +73,8 @@ export const Icons = {
   BookOpen,
   Clock,
   Layout,
+  List,
+  Link,
   Star,
   Monitor,
   FilePlus,

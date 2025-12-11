@@ -13,6 +13,7 @@ interface EditorProps {
   onTitleChange: (value: string) => void;
   focusMode: boolean;
   active: boolean;
+  sidebarOpen: boolean;
 }
 
 export const Editor = forwardRef<EditorHandle, EditorProps>((
@@ -22,7 +23,8 @@ export const Editor = forwardRef<EditorHandle, EditorProps>((
     title,
     onTitleChange,
     focusMode,
-    active
+    active,
+    sidebarOpen
   },
   ref
 ) => {
@@ -94,8 +96,8 @@ export const Editor = forwardRef<EditorHandle, EditorProps>((
 
   return (
     <div className="relative flex flex-col h-full w-full overflow-hidden">
-      <div className={`flex flex-col w-full px-8 md:px-20 lg:px-32 py-8 flex-1 overflow-y-auto transition-all duration-700 ease-in-out
-        ${focusMode ? 'mt-16' : 'mt-4'}
+      <div className={`flex flex-col w-full py-8 flex-1 overflow-y-auto transition-all duration-700 ease-in-out
+        ${focusMode ? 'mt-16 px-8 md:px-32 lg:px-48' : sidebarOpen ? 'px-8 md:px-12 lg:px-20 mt-4' : 'px-8 md:px-20 lg:px-32 xl:px-48 mt-4'}
       `}>
         {/* Title Input */}
         <textarea
