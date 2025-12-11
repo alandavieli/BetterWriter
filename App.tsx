@@ -954,7 +954,7 @@ const App: React.FC = () => {
         onUpdateTags={handleUpdateTags}
       />
 
-      <div className="flex-1 flex flex-col relative min-w-0 bg-white dark:bg-neutral-800 transition-all duration-300">
+      <div className={`flex-1 flex flex-col relative min-w-0 bg-white dark:bg-neutral-800 transition-all duration-300 ${showSidebar ? 'ml-72' : 'ml-0'}`}>
 
         {/* Fixed Top-Left Logo and Sidebar Toggle */}
         <div className="fixed top-4 left-4 z-50 flex items-center gap-3">
