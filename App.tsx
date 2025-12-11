@@ -8,6 +8,7 @@ import { ExportDialog } from './components/ExportDialog';
 import { StatsPage } from './components/StatsPage';
 import { HelpDialog } from './components/HelpDialog';
 import { PlanningPanel } from './components/PlanningPanel';
+import { FindReplace } from './components/FindReplace';
 import { AppState, FileNode, NodeType, FileCategory, ViewMode, Book, ExportConfig, WritingStats } from './types';
 
 // Utility for ID generation
@@ -60,6 +61,8 @@ const App: React.FC = () => {
   const [showExport, setShowExport] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showPlanning, setShowPlanning] = useState(false);
+  const [showFindReplace, setShowFindReplace] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   // --- Writing Stats State ---
   const getInitialStats = (): WritingStats => {
@@ -941,23 +944,139 @@ const App: React.FC = () => {
         onUpdateTags={handleUpdateTags}
       />
 
-      <div className={`flex-1 flex flex-col relative min-w-0 bg-white dark:bg-neutral-800 transition-all duration-300 ${showSidebar ? 'pl-72' : ''}`}>
+      <div className="flex-1 flex flex-col relative min-w-0 bg-white dark:bg-neutral-800 transition-all duration-300">
+
+        {/* Fixed Top-Left Logo and Sidebar Toggle */}
+        <div className="fixed top-4 left-4 z-50 flex items-center gap-3">
+          <button
+            onClick={() => setState(s => ({ ...s, sidebarOpen: !s.sidebarOpen }))}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg text-gray-500 dark:text-gray-400 bg-white/80 dark:bg-neutral-800/80 backdrop-blur shadow-sm"
+          >
+            {state.sidebarOpen ? <Icons.Menu size={20} /> : <Icons.ChevronRight size={20} />}
+          </button>
+          <span className="font-serif font-bold text-xl text-gold-600 bg-white/80 dark:bg-neutral-800/80 backdrop-blur px-3 py-2 rounded-lg shadow-sm">Better Writer</span>
+        </div>
 
         {/* Navbar */}
         <nav className={`w-full flex items-center justify-between px-6 py-3 border-b border-gray-100 dark:border-white/5 bg-white/50 dark:bg-neutral-800/50 backdrop-blur top-0 z-40 transition-all
               ${state.focusMode ? (userActivity ? 'opacity-100' : 'opacity-0 pointer-events-none') : 'opacity-100'}
           `}>
-          <div className="flex items-center gap-4">
-            <button onClick={() => setState(s => ({ ...s, sidebarOpen: !s.sidebarOpen }))} className="p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg text-gray-500">
-              {state.sidebarOpen ? <Icons.Menu size={20} /> : <Icons.ChevronRight size={20} />}
-            </button>
-            <span className="font-serif font-bold text-xl text-gold-600">Better Writer</span>
-          </div>
+          <div className="flex-1"></div>
 
           <div className="flex items-center gap-2">
-            {/* Open/Add Actions */}
+            {/* Formatting Tools - Only show when file is active */}
+            {activeFile && (
+              <>
+                <div className="flex items-center gap-1 border-r border-gray-200 dark:border-gray-600 pr-2 mr-2">
+                  <button
+                    onClick={() => {
+                      const ta = editorRef.current?.getTextarea();
+                      if (!ta) return;
+                      const start = ta.selectionStart;
+                      const end = ta.selectionEnd;
+                      const selectedText = activeFile.content?.substring(start, end) || '';
+                      const before = activeFile.content?.substring(0, start) || '';
+                      const after = activeFile.content?.substring(end) || '';
+                      const newContent = before + '**' + selectedText + '**' + after;
+                      setState(s => ({ ...s, fileMap: { ...s.fileMap, [activeFile.id]: { ...s.fileMap[activeFile.id], content: newContent } } }));
+                      setTimeout(() => ta.setSelectionRange(start + 2, end + 2), 0);
+                    }}
+                    className="p-2 rounded hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-gray-400 hover:text-gold-600"
+                    title="Bold (Ctrl+B)"
+                  >
+                    <Icons.Type size={16} className="font-bold" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      const ta = editorRef.current?.getTextarea();
+                      if (!ta) return;
+                      const start = ta.selectionStart;
+                      const end = ta.selectionEnd;
+                      const selectedText = activeFile.content?.substring(start, end) || '';
+                      const before = activeFile.content?.substring(0, start) || '';
+                      const after = activeFile.content?.substring(end) || '';
+                      const newContent = before + '*' + selectedText + '*' + after;
+                      setState(s => ({ ...s, fileMap: { ...s.fileMap, [activeFile.id]: { ...s.fileMap[activeFile.id], content: newContent } } }));
+                      setTimeout(() => ta.setSelectionRange(start + 1, end + 1), 0);
+                    }}
+                    className="p-2 rounded hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-gray-400 hover:text-gold-600"
+                    title="Italic (Ctrl+I)"
+                  >
+                    <span className="italic font-serif text-sm">I</span>
+                  </button>
+                  <button
+                    onClick={() => setShowFindReplace(!showFindReplace)}
+                    className="p-2 rounded hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-gray-400 hover:text-gold-600 flex items-center gap-1"
+                    title="Find & Replace (Ctrl+F)"
+                  >
+                    <Icons.Search size={16} />
+                  </button>
+                </div>
+
+                {/* Export Menu */}
+                <div className="relative mr-2">
+                  <button
+                    onClick={() => setShowExportMenu(!showExportMenu)}
+                    className="px-3 py-1.5 rounded bg-gold-500 hover:bg-gold-600 text-white flex items-center gap-2 text-sm font-medium"
+                  >
+                    <Icons.Download size={14} />
+                    Export
+                  </button>
+                  {showExportMenu && (
+                    <div className="absolute top-full right-0 mt-2 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl py-1 min-w-[140px] z-50">
+                      <button
+                        onClick={async () => {
+                          const { ExportService } = await import('./services/ExportService');
+                          await ExportService.exportDocument('TXT', { title: activeFile.title, content: activeFile.content || '' });
+                          setShowExportMenu(false);
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-white/10 flex items-center gap-2 text-gray-700 dark:text-gray-300"
+                      >
+                        <Icons.FileText size={14} />
+                        TXT
+                      </button>
+                      <button
+                        onClick={async () => {
+                          const { ExportService } = await import('./services/ExportService');
+                          await ExportService.exportDocument('PDF', { title: activeFile.title, content: activeFile.content || '' });
+                          setShowExportMenu(false);
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-white/10 flex items-center gap-2 text-gray-700 dark:text-gray-300"
+                      >
+                        <Icons.FileText size={14} />
+                        PDF
+                      </button>
+                      <button
+                        onClick={async () => {
+                          const { ExportService } = await import('./services/ExportService');
+                          await ExportService.exportDocument('DOCX', { title: activeFile.title, content: activeFile.content || '' });
+                          setShowExportMenu(false);
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-white/10 flex items-center gap-2 text-gray-700 dark:text-gray-300"
+                      >
+                        <Icons.FileText size={14} />
+                        DOCX
+                      </button>
+                      <button
+                        onClick={async () => {
+                          const { ExportService } = await import('./services/ExportService');
+                          await ExportService.exportDocument('EPUB', { title: activeFile.title, content: activeFile.content || '' });
+                          setShowExportMenu(false);
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-white/10 flex items-center gap-2 text-gray-700 dark:text-gray-300"
+                      >
+                        <Icons.BookOpen size={14} />
+                        EPUB
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Navigation Actions */}
             {!state.focusMode && (
-              <div className="mr-4 flex gap-2">
+              <div className="flex gap-2 border-r border-gray-200 dark:border-gray-600 pr-2 mr-2">
                 <Button onClick={handleOpenFolder} size="sm" variant="ghost" className="hidden md:flex text-gray-500 hover:text-gold-600">
                   <Icons.FolderPlus className="mr-2" size={16} /> Open Folder
                 </Button>
@@ -1002,6 +1121,34 @@ const App: React.FC = () => {
           <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-full text-sm shadow-xl z-50 flex items-center gap-2 animate-in slide-in-from-top-2">
             <Icons.Info size={16} /> {permissionMessage}
           </div>
+        )}
+
+
+        {/* Find & Replace Dialog */}
+        {showFindReplace && activeFile && (
+          <FindReplace
+            content={activeFile.content || ''}
+            onReplace={(newContent) => {
+              setState(s => ({
+                ...s,
+                fileMap: {
+                  ...s.fileMap,
+                  [activeFile.id]: {
+                    ...s.fileMap[activeFile.id],
+                    content: newContent
+                  }
+                }
+              }));
+            }}
+            onClose={() => setShowFindReplace(false)}
+            onNavigate={(index) => {
+              const ta = editorRef.current?.getTextarea();
+              if (ta) {
+                ta.setSelectionRange(index, index + 10);
+                ta.focus();
+              }
+            }}
+          />
         )}
 
         {/* Content */}

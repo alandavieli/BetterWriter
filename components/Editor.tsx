@@ -1,7 +1,4 @@
-import React, { useRef, useState, useImperativeHandle, forwardRef, useEffect } from 'react';
-import { EditorToolbar } from './EditorToolbar';
-import { FindReplace } from './FindReplace';
-import { ExportService, ExportFormat } from '../services/ExportService';
+import React, { useRef, useImperativeHandle, forwardRef, useEffect } from 'react';
 
 export interface EditorHandle {
   getSelection: () => { start: number; end: number; text: string };
@@ -15,7 +12,7 @@ interface EditorProps {
   title: string;
   onTitleChange: (value: string) => void;
   focusMode: boolean;
-  active: boolean; // Is user currently typing/active
+  active: boolean;
 }
 
 export const Editor = forwardRef<EditorHandle, EditorProps>((
@@ -31,8 +28,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>((
 ) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
-  const [showFindReplace, setShowFindReplace] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
+  const highlightRef = useRef<HTMLDivElement>(null);
 
   useImperativeHandle(ref, () => ({
     getSelection: () => {
@@ -57,7 +53,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>((
     onTitleChange(e.target.value);
   };
 
-  // Auto-resize logic for both textareas
+  // Auto-resize logic for title
   useEffect(() => {
     if (titleRef.current) {
       titleRef.current.style.height = 'auto';
@@ -65,142 +61,43 @@ export const Editor = forwardRef<EditorHandle, EditorProps>((
     }
   }, [title]);
 
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
-    }
-  }, [content]);
-
-  // Formatting functions
-  const wrapSelection = (prefix: string, suffix: string = prefix) => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-
-    const start = ta.selectionStart;
-    const end = ta.selectionEnd;
-    const selectedText = content.substring(start, end);
-    const before = content.substring(0, start);
-    const after = content.substring(end);
-
-    const newContent = before + prefix + selectedText + suffix + after;
-    onChange(newContent);
-
-    // Restore selection
-    setTimeout(() => {
-      ta.focus();
-      ta.setSelectionRange(start + prefix.length, end + prefix.length);
-    }, 0);
-  };
-
-  const handleBold = () => {
-    wrapSelection('**');
-  };
-
-  const handleItalic = () => {
-    wrapSelection('*');
-  };
-
-  const handleHeader = (level: 1 | 2 | 3) => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-
-    const start = ta.selectionStart;
-    const end = ta.selectionEnd;
-
-    // Find the start of the current line
-    let lineStart = start;
-    while (lineStart > 0 && content[lineStart - 1] !== '\n') {
-      lineStart--;
-    }
-
-    const before = content.substring(0, lineStart);
-    const lineContent = content.substring(lineStart, end);
-    const after = content.substring(end);
-
-    const headerPrefix = '#'.repeat(level) + ' ';
-    const newContent = before + headerPrefix + lineContent + after;
-    onChange(newContent);
-
-    setTimeout(() => {
-      ta.focus();
-      ta.setSelectionRange(start + headerPrefix.length, end + headerPrefix.length);
-    }, 0);
-  };
-
-  const handleExport = async (format: ExportFormat) => {
-    try {
-      await ExportService.exportDocument(format, {
-        title: title || 'Untitled',
-        content: content || '',
-        author: 'Author' // Could be from user settings
-      });
-    } catch (error) {
-      console.error('Export failed:', error);
-      alert('Export failed. Please try again.');
+  // Sync scroll between textarea and highlight layer
+  const handleScroll = () => {
+    if (textareaRef.current && highlightRef.current) {
+      highlightRef.current.scrollTop = textareaRef.current.scrollTop;
+      highlightRef.current.scrollLeft = textareaRef.current.scrollLeft;
     }
   };
 
-  const handleReplace = (newContent: string) => {
-    onChange(newContent);
-  };
+  // Process content with markdown styling
+  const processMarkdown = (text: string) => {
+    if (!text) return '';
 
-  const handleNavigate = (index: number) => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    ta.setSelectionRange(index, index + 10); // Highlight ~10 chars
-    ta.focus();
-  };
+    let processed = text
+      // Escape HTML
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      // Headers - make them larger and bold
+      .replace(/^(### )(.+)$/gm, '<span class="text-gold-600 dark:text-gold-400">$1</span><span class="text-2xl font-bold text-gray-900 dark:text-white">$2</span>')
+      .replace(/^(## )(.+)$/gm, '<span class="text-gold-600 dark:text-gold-400">$1</span><span class="text-3xl font-bold text-gray-900 dark:text-white">$2</span>')
+      .replace(/^(# )(.+)$/gm, '<span class="text-gold-600 dark:text-gold-400">$1</span><span class="text-4xl font-bold text-gray-900 dark:text-white">$2</span>')
+      // Bold - keep ** visible but bold the text
+      .replace(/(\*\*)(.+?)(\*\*)/g, '<span class="text-gold-500 dark:text-gold-400">$1</span><span class="font-bold">$2</span><span class="text-gold-500 dark:text-gold-400">$3</span>')
+      // Italic - keep * visible but italicize the text
+      .replace(/(\*)(.+?)(\*)/g, '<span class="text-gold-500 dark:text-gold-400">$1</span><span class="italic">$2</span><span class="text-gold-500 dark:text-gold-400">$3</span>')
+      // Newlines
+      .replace(/\n/g, '<br/>');
 
-  // Simple markdown rendering for preview
-  const renderMarkdown = (text: string) => {
-    let html = text;
-
-    // Headers
-    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-
-    // Bold
-    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-
-    // Italic
-    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-
-    // Line breaks
-    html = html.replace(/\n\n/g, '</p><p>');
-    html = html.replace(/\n/g, '<br>');
-
-    return `<p>${html}</p>`;
+    return processed;
   };
 
   return (
-    <div className="relative flex flex-col h-full">
-      {/* Toolbar */}
-      <EditorToolbar
-        onBold={handleBold}
-        onItalic={handleItalic}
-        onHeader={handleHeader}
-        onExport={handleExport}
-        onFindReplace={() => setShowFindReplace(!showFindReplace)}
-        focusMode={focusMode}
-        active={active}
-      />
-
-      {/* Find & Replace Dialog */}
-      {showFindReplace && (
-        <FindReplace
-          content={content}
-          onReplace={handleReplace}
-          onClose={() => setShowFindReplace(false)}
-          onNavigate={handleNavigate}
-        />
-      )}
-
-      <div className={`flex flex-col mx-auto px-4 md:px-12 py-8 min-h-[calc(100vh-4rem)] transition-all duration-700 ease-in-out overflow-y-auto flex-1
-        ${focusMode ? 'max-w-6xl mt-12' : 'max-w-5xl'}
+    <div className="relative flex flex-col h-full w-full overflow-hidden">
+      <div className={`flex flex-col w-full px-8 md:px-20 lg:px-32 py-8 flex-1 overflow-y-auto transition-all duration-700 ease-in-out
+        ${focusMode ? 'mt-16' : 'mt-4'}
       `}>
-        {/* Title Input - Textarea for wrapping */}
+        {/* Title Input */}
         <textarea
           ref={titleRef}
           rows={1}
@@ -218,44 +115,52 @@ export const Editor = forwardRef<EditorHandle, EditorProps>((
           }}
         />
 
-        {/* Toggle Preview Button */}
-        {!focusMode && (
-          <div className="flex justify-end mb-4">
-            <button
-              onClick={() => setShowPreview(!showPreview)}
-              className="text-xs text-gray-500 hover:text-gold-600 px-3 py-1 rounded border border-gray-300 dark:border-gray-600 hover:border-gold-500"
-            >
-              {showPreview ? 'Edit' : 'Preview'}
-            </button>
-          </div>
-        )}
+        {/* Editor Container with Live Markdown Preview */}
+        <div className="relative w-full flex-1 min-h-[500px]">
+          {/* Styled markdown background */}
+          <div
+            ref={highlightRef}
+            className="absolute inset-0 pointer-events-none overflow-hidden"
+            style={{
+              fontFamily: 'Merriweather, serif',
+              fontSize: '1.25rem',
+              lineHeight: '1.75',
+              whiteSpace: 'pre-wrap',
+              overflowWrap: 'break-word',
+              wordBreak: 'break-word',
+              padding: '0',
+              margin: '0',
+              border: 'none'
+            }}
+            dangerouslySetInnerHTML={{ __html: processMarkdown(content || '') }}
+          />
 
-        {/* Main Content Area */}
-        <div className="relative flex-1 w-full min-h-[60vh]">
-          {showPreview ? (
-            <div
-              className="prose dark:prose-invert max-w-none"
-              dangerouslySetInnerHTML={{ __html: renderMarkdown(content || '') }}
-            />
-          ) : (
-            <textarea
-              ref={textareaRef}
-              value={content || ''}
-              onChange={(e) => onChange(e.target.value)}
-              className={`w-full h-full resize-none bg-transparent focus:outline-none text-gray-900 dark:text-cream-100 caret-gold-600 dark:caret-gold-400 overflow-hidden
-                ${focusMode ? 'placeholder-gray-200/20' : 'placeholder-gray-300 dark:placeholder-gray-800'}
-              `}
-              style={{
-                fontFamily: 'Merriweather, serif',
-                fontSize: '1.25rem', // text-xl
-                lineHeight: '1.75em', // leading-loose
-                whiteSpace: 'pre-wrap',
-                overflowWrap: 'break-word',
-              }}
-              placeholder="Start writing..."
-              spellCheck={false}
-            />
-          )}
+          {/* Actual textarea - transparent text */}
+          <textarea
+            ref={textareaRef}
+            value={content || ''}
+            onChange={(e) => onChange(e.target.value)}
+            onScroll={handleScroll}
+            className={`w-full h-full resize-none bg-transparent focus:outline-none relative
+              ${focusMode ? 'placeholder-gray-200/20' : 'placeholder-gray-300 dark:placeholder-gray-800'}
+            `}
+            style={{
+              fontFamily: 'Merriweather, serif',
+              fontSize: '1.25rem',
+              lineHeight: '1.75',
+              whiteSpace: 'pre-wrap',
+              overflowWrap: 'break-word',
+              wordBreak: 'break-word',
+              color: 'transparent',
+              caretColor: '#f59e0b',
+              padding: '0',
+              margin: '0',
+              border: 'none',
+              overflow: 'auto'
+            }}
+            placeholder="Start writing..."
+            spellCheck={false}
+          />
         </div>
       </div>
     </div>
