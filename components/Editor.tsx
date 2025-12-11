@@ -71,7 +71,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>((
     }
   };
 
-  // Process content with markdown styling
+  // Process content with markdown styling - keeping layout consistent for cursor alignment
   const processMarkdown = (text: string) => {
     if (!text) return '';
 
@@ -80,10 +80,10 @@ export const Editor = forwardRef<EditorHandle, EditorProps>((
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
-      // Headers - make them larger and bold
-      .replace(/^(### )(.+)$/gm, '<span class="text-gold-600 dark:text-gold-400">$1</span><span class="text-2xl font-bold text-gray-900 dark:text-white">$2</span>')
-      .replace(/^(## )(.+)$/gm, '<span class="text-gold-600 dark:text-gold-400">$1</span><span class="text-3xl font-bold text-gray-900 dark:text-white">$2</span>')
-      .replace(/^(# )(.+)$/gm, '<span class="text-gold-600 dark:text-gold-400">$1</span><span class="text-4xl font-bold text-gray-900 dark:text-white">$2</span>')
+      // Headers - just color them, don't change size (to prevent cursor misalignment)
+      .replace(/^(### )(.+)$/gm, '<span class="text-gold-600 dark:text-gold-400 font-bold">$1$2</span>')
+      .replace(/^(## )(.+)$/gm, '<span class="text-gold-600 dark:text-gold-400 font-bold">$1$2</span>')
+      .replace(/^(# )(.+)$/gm, '<span class="text-gold-600 dark:text-gold-400 font-bold">$1$2</span>')
       // Bold - keep ** visible but bold the text
       .replace(/(\*\*)(.+?)(\*\*)/g, '<span class="text-gold-500 dark:text-gold-400">$1</span><span class="font-bold">$2</span><span class="text-gold-500 dark:text-gold-400">$3</span>')
       // Italic - keep * visible but italicize the text
