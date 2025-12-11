@@ -1078,145 +1078,133 @@ const App: React.FC = () => {
               <button onClick={handleExit} className="p-2 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 ml-2" title="Exit to Home">
                 <Icons.LogOut size={20} />
               </button>
-            <Icons.Focus size={18} />
-            <span className="text-sm font-medium hidden md:inline">Zen Focus Mode</span>
-          </button>
-
-          {
-            !state.focusMode && (
-              <button onClick={handleExit} className="p-2 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 ml-2" title="Exit to Home">
-                <Icons.LogOut size={20} />
-              </button>
-            )
-          }
-      </div >
-    </nav >
-
-        {/* Warning Message */ }
-  {
-    permissionMessage && (
-      <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-full text-sm shadow-xl z-50 flex items-center gap-2 animate-in slide-in-from-top-2">
-        <Icons.Info size={16} /> {permissionMessage}
-      </div>
-    )
-  }
-
-
-  {/* Find & Replace Dialog */ }
-  {
-    showFindReplace && activeFile && (
-      <FindReplace
-        content={activeFile.content || ''}
-        onReplace={(newContent) => {
-          setState(s => ({
-            ...s,
-            fileMap: {
-              ...s.fileMap,
-              [activeFile.id]: {
-                ...s.fileMap[activeFile.id],
-                content: newContent
-              }
-            }
-          }));
-        }}
-        onClose={() => setShowFindReplace(false)}
-        onNavigate={(index) => {
-          const ta = editorRef.current?.getTextarea();
-          if (ta) {
-            ta.setSelectionRange(index, index + 10);
-            ta.focus();
-          }
-        }}
-      />
-    )
-  }
-
-  {/* Content */ }
-  <main className="flex-1 overflow-y-auto relative" onClick={() => {
-    if (state.sidebarOpen && window.innerWidth < 768) setState(s => ({ ...s, sidebarOpen: false }));
-  }}>
-    {activeFile ? (
-      <Editor
-        ref={editorRef}
-        content={activeFile.content || ''}
-        onChange={(c) => {
-          const newWordCount = c.split(/\s+/).filter(w => w.length > 0).length;
-          setState(s => ({
-            ...s,
-            fileMap: {
-              ...s.fileMap,
-              [activeFile.id]: {
-                ...s.fileMap[activeFile.id],
-                content: c,
-                wordCount: newWordCount,
-                lastModified: Date.now()
-              }
-            }
-          }));
-          updateDailyStats(newWordCount);
-        }}
-        title={activeFile.title}
-        onTitleChange={(t) => setState(s => ({ ...s, fileMap: { ...s.fileMap, [activeFile.id]: { ...s.fileMap[activeFile.id], title: t } } }))}
-        focusMode={state.focusMode}
-        active={userActivity}
-        sidebarOpen={state.sidebarOpen}
-      />
-    ) : (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 animate-in fade-in">
-        <div className="max-w-3xl w-full text-center space-y-12">
-          <h2 className="text-4xl font-serif font-bold text-gray-900 dark:text-white">Workspace</h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            <button onClick={handleCreateNew} className="p-8 rounded-2xl bg-gray-50 dark:bg-neutral-900/50 hover:bg-white dark:hover:bg-neutral-800 border-2 border-transparent hover:border-gold-400 transition-all group">
-              <div className="w-12 h-12 bg-gold-100 dark:bg-gold-500/20 text-gold-600 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><Icons.FilePlus size={24} /></div>
-              <h3 className="font-bold mb-1">New Doc</h3>
-              <p className="text-xs text-gray-500">Create a scratchpad</p>
-            </button>
-            <button onClick={handleOpenFile} className="p-8 rounded-2xl bg-gray-50 dark:bg-neutral-900/50 hover:bg-white dark:hover:bg-neutral-800 border-2 border-transparent hover:border-gold-400 transition-all group">
-              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-500/20 text-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><Icons.FileText size={24} /></div>
-              <h3 className="font-bold mb-1">Open File</h3>
-              <p className="text-xs text-gray-500">Edit a single .txt/.md</p>
-            </button>
-            <button onClick={handleOpenFolder} className="p-8 rounded-2xl bg-gray-50 dark:bg-neutral-900/50 hover:bg-white dark:hover:bg-neutral-800 border-2 border-transparent hover:border-gold-400 transition-all group">
-              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-500/20 text-purple-600 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><Icons.FolderOpen size={24} /></div>
-              <h3 className="font-bold mb-1">Open Project</h3>
-              <p className="text-xs text-gray-500">Import a folder</p>
-            </button>
+            )}
           </div>
-        </div>
-      </div>
-    )}
-  </main>
+        </nav>
+
+        {/* Warning Message */}
+        {permissionMessage && (
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-full text-sm shadow-xl z-50 flex items-center gap-2 animate-in slide-in-from-top-2">
+            <Icons.Info size={16} /> {permissionMessage}
+          </div>
+        )}
+
+
+        {/* Find & Replace Dialog */}
+        {
+          showFindReplace && activeFile && (
+            <FindReplace
+              content={activeFile.content || ''}
+              onReplace={(newContent) => {
+                setState(s => ({
+                  ...s,
+                  fileMap: {
+                    ...s.fileMap,
+                    [activeFile.id]: {
+                      ...s.fileMap[activeFile.id],
+                      content: newContent
+                    }
+                  }
+                }));
+              }}
+              onClose={() => setShowFindReplace(false)}
+              onNavigate={(index) => {
+                const ta = editorRef.current?.getTextarea();
+                if (ta) {
+                  ta.setSelectionRange(index, index + 10);
+                  ta.focus();
+                }
+              }}
+            />
+          )
+        }
+
+        {/* Content */}
+        <main className="flex-1 overflow-y-auto relative" onClick={() => {
+          if (state.sidebarOpen && window.innerWidth < 768) setState(s => ({ ...s, sidebarOpen: false }));
+        }}>
+          {activeFile ? (
+            <Editor
+              ref={editorRef}
+              content={activeFile.content || ''}
+              onChange={(c) => {
+                const newWordCount = c.split(/\s+/).filter(w => w.length > 0).length;
+                setState(s => ({
+                  ...s,
+                  fileMap: {
+                    ...s.fileMap,
+                    [activeFile.id]: {
+                      ...s.fileMap[activeFile.id],
+                      content: c,
+                      wordCount: newWordCount,
+                      lastModified: Date.now()
+                    }
+                  }
+                }));
+                updateDailyStats(newWordCount);
+              }}
+              title={activeFile.title}
+              onTitleChange={(t) => setState(s => ({ ...s, fileMap: { ...s.fileMap, [activeFile.id]: { ...s.fileMap[activeFile.id], title: t } } }))}
+              focusMode={state.focusMode}
+              active={userActivity}
+              sidebarOpen={state.sidebarOpen}
+            />
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center p-8 animate-in fade-in">
+              <div className="max-w-3xl w-full text-center space-y-12">
+                <h2 className="text-4xl font-serif font-bold text-gray-900 dark:text-white">Workspace</h2>
+                <div className="grid md:grid-cols-3 gap-6">
+                  <button onClick={handleCreateNew} className="p-8 rounded-2xl bg-gray-50 dark:bg-neutral-900/50 hover:bg-white dark:hover:bg-neutral-800 border-2 border-transparent hover:border-gold-400 transition-all group">
+                    <div className="w-12 h-12 bg-gold-100 dark:bg-gold-500/20 text-gold-600 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><Icons.FilePlus size={24} /></div>
+                    <h3 className="font-bold mb-1">New Doc</h3>
+                    <p className="text-xs text-gray-500">Create a scratchpad</p>
+                  </button>
+                  <button onClick={handleOpenFile} className="p-8 rounded-2xl bg-gray-50 dark:bg-neutral-900/50 hover:bg-white dark:hover:bg-neutral-800 border-2 border-transparent hover:border-gold-400 transition-all group">
+                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-500/20 text-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><Icons.FileText size={24} /></div>
+                    <h3 className="font-bold mb-1">Open File</h3>
+                    <p className="text-xs text-gray-500">Edit a single .txt/.md</p>
+                  </button>
+                  <button onClick={handleOpenFolder} className="p-8 rounded-2xl bg-gray-50 dark:bg-neutral-900/50 hover:bg-white dark:hover:bg-neutral-800 border-2 border-transparent hover:border-gold-400 transition-all group">
+                    <div className="w-12 h-12 bg-purple-100 dark:bg-purple-500/20 text-purple-600 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><Icons.FolderOpen size={24} /></div>
+                    <h3 className="font-bold mb-1">Open Project</h3>
+                    <p className="text-xs text-gray-500">Import a folder</p>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </main>
       </div >
 
-  { showHelp && <HelpDialog onClose={() => setShowHelp(false)} />}
+      {showHelp && <HelpDialog onClose={() => setShowHelp(false)} />}
 
-{ showTutorial && <TutorialDialog onClose={() => setShowTutorial(false)} /> }
+      {showTutorial && <TutorialDialog onClose={() => setShowTutorial(false)} />}
 
-{
-  showPlanning && (
-    <PlanningPanel
-      fileMap={state.fileMap}
-      onClose={() => setShowPlanning(false)}
-    />
-  )
-}
+      {
+        showPlanning && (
+          <PlanningPanel
+            fileMap={state.fileMap}
+            onClose={() => setShowPlanning(false)}
+          />
+        )
+      }
 
-{
-  showExport && (
-    <ExportDialog
-      isOpen={showExport}
-      onClose={() => setShowExport(false)}
-      onExport={async (config) => {
-        // ... (Simulated export)
-        alert("Export complete!");
-        setShowExport(false);
-      }}
-      bookTitle={activeBook?.title || 'Unknown Project'}
-    />
-  )
-}
+      {
+        showExport && (
+          <ExportDialog
+            isOpen={showExport}
+            onClose={() => setShowExport(false)}
+            onExport={async (config) => {
+              // ... (Simulated export)
+              alert("Export complete!");
+              setShowExport(false);
+            }}
+            bookTitle={activeBook?.title || 'Unknown Project'}
+          />
+        )
+      }
 
-{/* Hidden Inputs for Legacy Support */ }
+      {/* Hidden Inputs for Legacy Support */}
       <input
         type="file"
         ref={fileInputRef}
