@@ -1078,200 +1078,114 @@ const App: React.FC = () => {
               <button onClick={handleExit} className="p-2 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 ml-2" title="Exit to Home">
                 <Icons.LogOut size={20} />
               </button>
-                    await ExportService.exportDocument('TXT', {title: activeFile.title, content: activeFile.content || '' });
-            setShowExportMenu(false);
-                  }}
-            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-white/10 flex items-center gap-2 text-gray-700 dark:text-gray-300"
-                >
-            <Icons.FileText size={14} />
-            TXT
+            <Icons.Focus size={18} />
+            <span className="text-sm font-medium hidden md:inline">Zen Focus Mode</span>
           </button>
-          <button
-            onClick={async () => {
-              const { ExportService } = await import('./services/ExportService');
-              await ExportService.exportDocument('PDF', { title: activeFile.title, content: activeFile.content || '' });
-              setShowExportMenu(false);
-            }}
-            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-white/10 flex items-center gap-2 text-gray-700 dark:text-gray-300"
-          >
-            <Icons.FileText size={14} />
-            PDF
-          </button>
-          <button
-            onClick={async () => {
-              const { ExportService } = await import('./services/ExportService');
-              await ExportService.exportDocument('DOCX', { title: activeFile.title, content: activeFile.content || '' });
-              setShowExportMenu(false);
-            }}
-            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-white/10 flex items-center gap-2 text-gray-700 dark:text-gray-300"
-          >
-            <Icons.FileText size={14} />
-            DOCX
-          </button>
-          <button
-            onClick={async () => {
-              const { ExportService } = await import('./services/ExportService');
-              await ExportService.exportDocument('EPUB', { title: activeFile.title, content: activeFile.content || '' });
-              setShowExportMenu(false);
-            }}
-            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-white/10 flex items-center gap-2 text-gray-700 dark:text-gray-300"
-          >
-            <Icons.BookOpen size={14} />
-            EPUB
-          </button>
-      </div>
-            )}
-    </div>
-        </>
-            )}
 
-{/* Navigation Actions */ }
-{
-  !state.focusMode && (
-    <div className="flex gap-2 border-r border-gray-200 dark:border-gray-600 pr-2 mr-2">
-      <Button onClick={handleOpenFolder} size="sm" variant="ghost" className="hidden md:flex text-gray-500 hover:text-gold-600">
-        <Icons.FolderPlus className="mr-2" size={16} /> Open Folder
-      </Button>
-      <Button onClick={() => setState(s => ({ ...s, view: ViewMode.STATS }))} variant="ghost" size="sm" className="hidden md:flex text-gray-500 hover:text-gold-600">
-        <Icons.BarChart2 className="mr-2" size={16} /> Stats
-      </Button>
-      <Button onClick={() => setShowPlanning(true)} variant="ghost" size="sm" className="hidden md:flex text-gray-500 hover:text-gold-600">
-        <Icons.Layout className="mr-2" size={16} /> Planning
-      </Button>
-    </div>
-  )
-}
-
-{
-  activeFile && (
-    <Button onClick={() => saveFile(true)} size="sm" variant={lastSaved > Date.now() - 2000 ? "primary" : "ghost"} className="transition-all">
-      <Icons.Save className="mr-2" size={16} />
-      {lastSaved > Date.now() - 2000 ? "Saved!" : "Save"}
-    </Button>
-  )
-}
-
-        <button onClick={() => setShowTutorial(true)} className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5" title="Tutorial">
-          <Icons.BookOpen size={20} />
-        </button>
-
-        <button onClick={() => setShowHelp(true)} className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5" title="Browser Info">
-          <Icons.HelpCircle size={20} />
-        </button>
-
-        <button onClick={() => setState(s => ({ ...s, darkMode: !s.darkMode }))} className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5" title="Toggle Theme">
-          {state.darkMode ? <Icons.Sun size={20} /> : <Icons.Moon size={20} />}
-        </button>
-
-        <button onClick={() => setState(s => ({ ...s, focusMode: !s.focusMode }))} className={`px-3 py-2 rounded-lg transition-all flex items-center gap-2 ${state.focusMode ? 'bg-gold-500 text-white shadow-md' : 'bg-gray-100 dark:bg-neutral-700 text-gray-600 dark:text-gray-400 hover:bg-gold-100 dark:hover:bg-gold-900/20'}`} title="Focus Mode">
-          <Icons.Focus size={18} />
-          <span className="text-sm font-medium hidden md:inline">Zen Focus Mode</span>
-        </button>
-
-{
-  !state.focusMode && (
-    <button onClick={handleExit} className="p-2 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 ml-2" title="Exit to Home">
-      <Icons.LogOut size={20} />
-    </button>
-  )
-}
+          {
+            !state.focusMode && (
+              <button onClick={handleExit} className="p-2 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 ml-2" title="Exit to Home">
+                <Icons.LogOut size={20} />
+              </button>
+            )
+          }
       </div >
     </nav >
 
-  {/* Warning Message */ }
-{
-  permissionMessage && (
-    <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-full text-sm shadow-xl z-50 flex items-center gap-2 animate-in slide-in-from-top-2">
-      <Icons.Info size={16} /> {permissionMessage}
-    </div>
-  )
-}
+        {/* Warning Message */ }
+  {
+    permissionMessage && (
+      <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-full text-sm shadow-xl z-50 flex items-center gap-2 animate-in slide-in-from-top-2">
+        <Icons.Info size={16} /> {permissionMessage}
+      </div>
+    )
+  }
 
 
-{/* Find & Replace Dialog */ }
-{
-  showFindReplace && activeFile && (
-    <FindReplace
-      content={activeFile.content || ''}
-      onReplace={(newContent) => {
-        setState(s => ({
-          ...s,
-          fileMap: {
-            ...s.fileMap,
-            [activeFile.id]: {
-              ...s.fileMap[activeFile.id],
-              content: newContent
+  {/* Find & Replace Dialog */ }
+  {
+    showFindReplace && activeFile && (
+      <FindReplace
+        content={activeFile.content || ''}
+        onReplace={(newContent) => {
+          setState(s => ({
+            ...s,
+            fileMap: {
+              ...s.fileMap,
+              [activeFile.id]: {
+                ...s.fileMap[activeFile.id],
+                content: newContent
+              }
             }
+          }));
+        }}
+        onClose={() => setShowFindReplace(false)}
+        onNavigate={(index) => {
+          const ta = editorRef.current?.getTextarea();
+          if (ta) {
+            ta.setSelectionRange(index, index + 10);
+            ta.focus();
           }
-        }));
-      }}
-      onClose={() => setShowFindReplace(false)}
-      onNavigate={(index) => {
-        const ta = editorRef.current?.getTextarea();
-        if (ta) {
-          ta.setSelectionRange(index, index + 10);
-          ta.focus();
-        }
-      }}
-    />
-  )
-}
+        }}
+      />
+    )
+  }
 
-{/* Content */ }
-<main className="flex-1 overflow-y-auto relative" onClick={() => {
-  if (state.sidebarOpen && window.innerWidth < 768) setState(s => ({ ...s, sidebarOpen: false }));
-}}>
-  {activeFile ? (
-    <Editor
-      ref={editorRef}
-      content={activeFile.content || ''}
-      onChange={(c) => {
-        const newWordCount = c.split(/\s+/).filter(w => w.length > 0).length;
-        setState(s => ({
-          ...s,
-          fileMap: {
-            ...s.fileMap,
-            [activeFile.id]: {
-              ...s.fileMap[activeFile.id],
-              content: c,
-              wordCount: newWordCount,
-              lastModified: Date.now()
+  {/* Content */ }
+  <main className="flex-1 overflow-y-auto relative" onClick={() => {
+    if (state.sidebarOpen && window.innerWidth < 768) setState(s => ({ ...s, sidebarOpen: false }));
+  }}>
+    {activeFile ? (
+      <Editor
+        ref={editorRef}
+        content={activeFile.content || ''}
+        onChange={(c) => {
+          const newWordCount = c.split(/\s+/).filter(w => w.length > 0).length;
+          setState(s => ({
+            ...s,
+            fileMap: {
+              ...s.fileMap,
+              [activeFile.id]: {
+                ...s.fileMap[activeFile.id],
+                content: c,
+                wordCount: newWordCount,
+                lastModified: Date.now()
+              }
             }
-          }
-        }));
-        updateDailyStats(newWordCount);
-      }}
-      title={activeFile.title}
-      onTitleChange={(t) => setState(s => ({ ...s, fileMap: { ...s.fileMap, [activeFile.id]: { ...s.fileMap[activeFile.id], title: t } } }))}
-      focusMode={state.focusMode}
-      active={userActivity}
-      sidebarOpen={state.sidebarOpen}
-    />
-  ) : (
-    <div className="flex-1 flex flex-col items-center justify-center p-8 animate-in fade-in">
-      <div className="max-w-3xl w-full text-center space-y-12">
-        <h2 className="text-4xl font-serif font-bold text-gray-900 dark:text-white">Workspace</h2>
-        <div className="grid md:grid-cols-3 gap-6">
-          <button onClick={handleCreateNew} className="p-8 rounded-2xl bg-gray-50 dark:bg-neutral-900/50 hover:bg-white dark:hover:bg-neutral-800 border-2 border-transparent hover:border-gold-400 transition-all group">
-            <div className="w-12 h-12 bg-gold-100 dark:bg-gold-500/20 text-gold-600 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><Icons.FilePlus size={24} /></div>
-            <h3 className="font-bold mb-1">New Doc</h3>
-            <p className="text-xs text-gray-500">Create a scratchpad</p>
-          </button>
-          <button onClick={handleOpenFile} className="p-8 rounded-2xl bg-gray-50 dark:bg-neutral-900/50 hover:bg-white dark:hover:bg-neutral-800 border-2 border-transparent hover:border-gold-400 transition-all group">
-            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-500/20 text-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><Icons.FileText size={24} /></div>
-            <h3 className="font-bold mb-1">Open File</h3>
-            <p className="text-xs text-gray-500">Edit a single .txt/.md</p>
-          </button>
-          <button onClick={handleOpenFolder} className="p-8 rounded-2xl bg-gray-50 dark:bg-neutral-900/50 hover:bg-white dark:hover:bg-neutral-800 border-2 border-transparent hover:border-gold-400 transition-all group">
-            <div className="w-12 h-12 bg-purple-100 dark:bg-purple-500/20 text-purple-600 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><Icons.FolderOpen size={24} /></div>
-            <h3 className="font-bold mb-1">Open Project</h3>
-            <p className="text-xs text-gray-500">Import a folder</p>
-          </button>
+          }));
+          updateDailyStats(newWordCount);
+        }}
+        title={activeFile.title}
+        onTitleChange={(t) => setState(s => ({ ...s, fileMap: { ...s.fileMap, [activeFile.id]: { ...s.fileMap[activeFile.id], title: t } } }))}
+        focusMode={state.focusMode}
+        active={userActivity}
+        sidebarOpen={state.sidebarOpen}
+      />
+    ) : (
+      <div className="flex-1 flex flex-col items-center justify-center p-8 animate-in fade-in">
+        <div className="max-w-3xl w-full text-center space-y-12">
+          <h2 className="text-4xl font-serif font-bold text-gray-900 dark:text-white">Workspace</h2>
+          <div className="grid md:grid-cols-3 gap-6">
+            <button onClick={handleCreateNew} className="p-8 rounded-2xl bg-gray-50 dark:bg-neutral-900/50 hover:bg-white dark:hover:bg-neutral-800 border-2 border-transparent hover:border-gold-400 transition-all group">
+              <div className="w-12 h-12 bg-gold-100 dark:bg-gold-500/20 text-gold-600 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><Icons.FilePlus size={24} /></div>
+              <h3 className="font-bold mb-1">New Doc</h3>
+              <p className="text-xs text-gray-500">Create a scratchpad</p>
+            </button>
+            <button onClick={handleOpenFile} className="p-8 rounded-2xl bg-gray-50 dark:bg-neutral-900/50 hover:bg-white dark:hover:bg-neutral-800 border-2 border-transparent hover:border-gold-400 transition-all group">
+              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-500/20 text-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><Icons.FileText size={24} /></div>
+              <h3 className="font-bold mb-1">Open File</h3>
+              <p className="text-xs text-gray-500">Edit a single .txt/.md</p>
+            </button>
+            <button onClick={handleOpenFolder} className="p-8 rounded-2xl bg-gray-50 dark:bg-neutral-900/50 hover:bg-white dark:hover:bg-neutral-800 border-2 border-transparent hover:border-gold-400 transition-all group">
+              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-500/20 text-purple-600 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><Icons.FolderOpen size={24} /></div>
+              <h3 className="font-bold mb-1">Open Project</h3>
+              <p className="text-xs text-gray-500">Import a folder</p>
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  )}
-</main>
+    )}
+  </main>
       </div >
 
   { showHelp && <HelpDialog onClose={() => setShowHelp(false)} />}
